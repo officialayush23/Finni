@@ -73,14 +73,27 @@ async def get_profile(
     db: AsyncSession = Depends(get_db),
     auth: AuthUser = Depends(get_current_user),
 ):
+    # 1️⃣ Ensure user exists (Supabase-first login)
     user = await db.get(User, auth.user_id)
+    if not user:
+        user = User(
+            id=auth.user_id,
+            email=auth.email,
+            preferences={},
+            metadata_={},
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
 
+    # 2️⃣ Load incomes
     incomes = (
         await db.execute(
             select(IncomeSource).where(IncomeSource.user_id == auth.user_id)
         )
     ).scalars().all()
 
+    # 3️⃣ Load investments
     investments = (
         await db.execute(
             select(PortfolioHolding).where(PortfolioHolding.user_id == auth.user_id)
@@ -112,11 +125,11 @@ async def get_profile(
                 current_value=inv.current_value,
                 expected_return_pct=(
                     inv.metadata_.get("expected_return_pct")
-                    if inv.metadata_ else None
+                    if hasattr(inv, "metadata_") and inv.metadata_ else None
                 ),
                 pinned=(
                     inv.metadata_.get("pinned", False)
-                    if inv.metadata_ else False
+                    if hasattr(inv, "metadata_") and inv.metadata_ else False
                 ),
                 last_api_fetch=(
                     inv.last_api_fetch.isoformat()
@@ -126,6 +139,7 @@ async def get_profile(
             for inv in investments
         ],
     )
+
 
 
 @router.patch("/profile")

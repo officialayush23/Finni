@@ -220,6 +220,7 @@ class PortfolioHolding(Base):
     quantity = Column(Numeric(36, 12))
     avg_buy_price = Column(Numeric(30, 10))
     current_value = Column(Numeric(30, 10))
+    metadata_ = Column("metadata", JSONB, default={})
     last_api_fetch = Column(DateTime(timezone=True))
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
