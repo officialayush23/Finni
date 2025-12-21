@@ -261,3 +261,12 @@ class UserProfileUpdate(BaseModel):
 class IngestEventCreate(BaseModel):
     sender: Optional[str] = None
     raw_text: str
+
+
+class AICategorizationResult(BaseModel):
+    merchant_name: str
+    normalized_merchant: str
+    category_id: str
+    confidence: float
+    signals: Dict[str, bool]
+    explanation: str

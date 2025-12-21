@@ -1,13 +1,19 @@
 # app/models/all_models.py
-# app/models/all_models.py
-
 import uuid
 import enum
 from datetime import datetime, date
 
 from sqlalchemy import (
-    Column, String, Boolean, Numeric, Date, DateTime,
-    ForeignKey, Text, UniqueConstraint
+    Column,
+    String,
+    Boolean,
+    Numeric,
+    Date,
+    DateTime,
+    ForeignKey,
+    Text,
+    UniqueConstraint,
+    Enum as SQLEnum,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY, UUID
@@ -17,40 +23,41 @@ from app.core.database import Base
 
 
 # =========================
-# Enums
+# Enums (MUST match Postgres)
 # =========================
 
-class AssetType(str, enum.Enum):
-    STOCK = "stock"
-    CRYPTO = "crypto"
-    BOND = "bond"
-    MUTUAL_FUND = "mutual_fund"
-    GOLD = "gold"
-    REAL_ESTATE = "real_estate"
+class AssetTypeEnum(str, enum.Enum):
+    stock = "stock"
+    crypto = "crypto"
+    bond = "bond"
+    mutual_fund = "mutual_fund"
+    gold = "gold"
+    real_estate = "real_estate"
 
 
-class IncomeType(str, enum.Enum):
-    SALARY = "salary"
-    BUSINESS = "business"
-    RENTAL = "rental"
-    DIVIDEND = "dividend"
-    INTEREST = "interest"
-    OTHER = "other"
+class IncomeTypeEnum(str, enum.Enum):
+    salary = "salary"
+    business = "business"
+    rental = "rental"
+    dividend = "dividend"
+    interest = "interest"
+    other = "other"
 
 
-class TxnSource(str, enum.Enum):
-    OCR = "ocr"
-    SMS = "sms"
-    NOTIFICATION = "notification"
-    CSV = "csv"
-    MANUAL = "manual"
-    BLOCKCHAIN = "blockchain"
+class TxnSourceEnum(str, enum.Enum):
+    manual = "manual"
+    voice = "voice"
+    chatbot = "chatbot"
+    csv = "csv"
+    notification = "notification"
+    wallet = "wallet"
+    blockchain = "blockchain"
 
 
-class RateType(str, enum.Enum):
-    FIXED = "fixed"
-    MARKET_LINKED = "market_linked"
-    API_DRIVEN = "api_driven"
+class RateTypeEnum(str, enum.Enum):
+    fixed = "fixed"
+    market_linked = "market_linked"
+    api_driven = "api_driven"
 
 
 # =========================
@@ -64,10 +71,15 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False)
     full_name = Column(String(255))
     phone = Column(String(30))
-    preferences = Column(JSONB, default={})
-    metadata_ = Column("metadata", JSONB, default={})
+    preferences = Column(JSONB, default=dict)
+    metadata_ = Column("metadata", JSONB, default=dict)
+
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
 
     wallets = relationship("UserWallet", back_populates="user", cascade="all, delete-orphan")
     transactions = relationship("Transaction", back_populates="user")
@@ -78,6 +90,78 @@ class User(Base):
     chat_sessions = relationship("ChatSession", back_populates="user")
 
 
+class FinancialGoal(Base):
+    __tablename__ = "financial_goals"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+
+    name = Column(String(255))
+    target_amount = Column(Numeric(18, 2))
+    current_amount = Column(Numeric(18, 2), default=0)
+    target_date = Column(Date)
+    status = Column(String(20), default="active")
+
+    ai_feasibility_score = Column(Numeric(5, 2))
+    ai_advice_summary = Column(Text)
+
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+
+    user = relationship("User", back_populates="goals")
+    allocations = relationship(
+        "GoalAllocation",
+        back_populates="goal",
+        cascade="all, delete-orphan",
+    )
+
+
+class GoalAllocation(Base):
+    __tablename__ = "goal_allocations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    goal_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("financial_goals.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    income_source_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("income_sources.id"),
+        nullable=True,
+    )
+
+    portfolio_holding_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("portfolio_holdings.id"),
+        nullable=True,
+    )
+
+    allocation_percentage = Column(Numeric(5, 2))
+    allocation_fixed_amount = Column(Numeric(18, 2))
+
+    goal = relationship("FinancialGoal", back_populates="allocations")
+    income_source = relationship("IncomeSource", back_populates="allocations")
+    portfolio_holding = relationship("PortfolioHolding", back_populates="allocations")
+
+
+class RawFinancialEvent(Base):
+    __tablename__ = "raw_financial_events"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+
+    source = Column(String(30), nullable=False)  # sms | ocr | notification | csv | wallet
+    sender = Column(String(100))
+    raw_text = Column(Text, nullable=False)
+
+    received_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    is_parsed = Column(Boolean, default=False)
+
+    parsed_transaction_id = Column(UUID(as_uuid=True))
+
+
 class UserWallet(Base):
     __tablename__ = "user_wallets"
 
@@ -86,7 +170,7 @@ class UserWallet(Base):
     wallet_type = Column(String(30), nullable=False)
     address = Column(String(200), nullable=False)
     is_primary = Column(Boolean, default=False)
-    metadata_ = Column("metadata", JSONB, default={})
+    metadata_ = Column("metadata", JSONB, default=dict)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     user = relationship("User", back_populates="wallets")
@@ -127,7 +211,7 @@ class MerchantMaster(Base):
     canonical_name_norm = Column(String)
     default_category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"))
     logo_url = Column(Text)
-    aliases = Column(ARRAY(String), default=[])
+    aliases = Column(ARRAY(String), default=list)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     transactions = relationship("Transaction", back_populates="merchant")
@@ -153,37 +237,27 @@ class MerchantCategoryMap(Base):
 # 3. Transactions
 # =========================
 
-class RawFinancialEvent(Base):
-    __tablename__ = "raw_financial_events"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
-    source = Column(String(30), nullable=False)
-    sender = Column(String(100))
-    raw_text = Column(Text, nullable=False)
-    received_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    is_parsed = Column(Boolean, default=False)
-    parsed_transaction_id = Column(UUID(as_uuid=True))
-
-
 class Transaction(Base):
     __tablename__ = "transactions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+
     amount = Column(Numeric(18, 2), nullable=False)
     currency = Column(String(3), default="INR")
     occurred_at = Column(DateTime(timezone=True), nullable=False)
+
     merchant_id = Column(UUID(as_uuid=True), ForeignKey("merchant_master.id"))
     merchant_raw = Column(Text)
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"))
-    source = Column(String, nullable=False)
-    raw_event_id = Column(UUID(as_uuid=True), ForeignKey("raw_financial_events.id"))
+
+    source = Column(
+        SQLEnum(TxnSourceEnum, name="txn_source_enum"),
+        nullable=False,
+    )
+
     description = Column(Text)
-    anomaly_score = Column(Numeric(6, 4), default=0)
-    blockchain_hash = Column(String(66))
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="transactions")
     merchant = relationship("MerchantMaster", back_populates="transactions")
@@ -198,9 +272,20 @@ class IncomeSource(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
-    name = Column(String(255))
-    source_type = Column(String)
-    rate_type = Column(String, default="fixed")
+
+    name = Column(String(255), nullable=False)
+
+    source_type = Column(
+        SQLEnum(IncomeTypeEnum, name="income_type_enum"),
+        nullable=False,
+    )
+
+    rate_type = Column(
+        SQLEnum(RateTypeEnum, name="rate_type_enum"),
+        nullable=False,
+        default=RateTypeEnum.fixed,
+    )
+
     estimated_monthly_amount = Column(Numeric(18, 2))
     api_source_identifier = Column(String(100))
     is_active = Column(Boolean, default=True)
@@ -214,13 +299,18 @@ class PortfolioHolding(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
-    asset_type = Column(String)
+
+    asset_type = Column(
+        SQLEnum(AssetTypeEnum, name="asset_type_enum"),
+        nullable=False,
+    )
+
     identifier = Column(String(200))
     name = Column(String(255))
     quantity = Column(Numeric(36, 12))
     avg_buy_price = Column(Numeric(30, 10))
     current_value = Column(Numeric(30, 10))
-    metadata_ = Column("metadata", JSONB, default={})
+    metadata_ = Column("metadata", JSONB, default=dict)
     last_api_fetch = Column(DateTime(timezone=True))
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -229,43 +319,8 @@ class PortfolioHolding(Base):
 
 
 # =========================
-# 5. Goals & Budgets
+# 5. Budgets
 # =========================
-
-class FinancialGoal(Base):
-    __tablename__ = "financial_goals"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
-    name = Column(String(255))
-    target_amount = Column(Numeric(18, 2))
-    current_amount = Column(Numeric(18, 2), default=0)
-    target_date = Column(Date)
-    status = Column(String(20), default="active")
-    ai_feasibility_score = Column(Numeric(5, 2))
-    ai_advice_summary = Column(Text)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-
-    user = relationship("User", back_populates="goals")
-    allocations = relationship("GoalAllocation", back_populates="goal")
-
-
-class GoalAllocation(Base):
-    __tablename__ = "goal_allocations"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    goal_id = Column(UUID(as_uuid=True), ForeignKey("financial_goals.id", ondelete="CASCADE"))
-    income_source_id = Column(UUID(as_uuid=True), ForeignKey("income_sources.id"))
-    portfolio_holding_id = Column(UUID(as_uuid=True), ForeignKey("portfolio_holdings.id"))
-    allocation_percentage = Column(Numeric(5, 2))
-    allocation_fixed_amount = Column(Numeric(18, 2))
-
-    goal = relationship("FinancialGoal", back_populates="allocations")
-    income_source = relationship("IncomeSource", back_populates="allocations")
-    portfolio_holding = relationship("PortfolioHolding", back_populates="allocations")
-
-
-# app/models/all_models.py
 
 class Budget(Base):
     __tablename__ = "budgets"
@@ -279,15 +334,10 @@ class Budget(Base):
     alert_threshold = Column(Numeric(5, 2), default=80)
     is_active = Column(Boolean, default=True)
 
-    # ✅ FIX: use metadata_ in Python, map to "metadata" in DB
     metadata_ = Column("metadata", JSONB, default=dict)
 
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(
-        DateTime(timezone=True),
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
-    )
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="budgets")
 
@@ -316,7 +366,7 @@ class ChatMessage(Base):
     sender = Column(String(10))
     content = Column(Text, nullable=False)
     embedding = Column(Vector(1536))
-    context_tags = Column(JSONB, default=[])
+    context_tags = Column(JSONB, default=list)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     session = relationship("ChatSession", back_populates="messages")
@@ -342,19 +392,18 @@ class GoalConflict(Base):
     conflict_type = Column(String(50))
     details = Column(JSONB)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+
+
 class WalletTransaction(Base):
     __tablename__ = "wallet_transactions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    wallet_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("user_wallets.id", ondelete="CASCADE"),
-    )
+    wallet_id = Column(UUID(as_uuid=True), ForeignKey("user_wallets.id", ondelete="CASCADE"))
     chain = Column(String(30))
     tx_hash = Column(String(100), nullable=False)
     amount = Column(Numeric(30, 10))
     token_symbol = Column(String(20))
-    direction = Column(String(10))  # in / out
+    direction = Column(String(10))
     occurred_at = Column(DateTime(timezone=True))
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"))
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
