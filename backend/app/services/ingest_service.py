@@ -1,59 +1,68 @@
 # app/services/ingest_service.py
-
-import re
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
-
-from app.models.all_models import RawFinancialEvent, Transaction
+from app.models.all_models import (
+    RawFinancialEvent,
+    Transaction,
+    Category,
+)
+from app.services.transaction_ai import explain_transaction
 from app.services.transaction_service import handle_budget_checks
 from app.services.websocket_manager import manager
+from app.services.parsers.simple_parser import parse_transaction_text
 
-AMOUNT_REGEX = r"(₹|Rs\.?)\s?([\d,]+\.?\d*)"
 
 async def process_raw_event(
     db: AsyncSession,
     raw: RawFinancialEvent,
 ):
     """
-    Parse raw text → create transaction
+    Converts raw event → transaction → AI → realtime
     """
-    text = raw.raw_text
 
-    match = re.search(AMOUNT_REGEX, text)
-    if not match:
-        return
+    # 1. Parse text (AI + heuristics)
+    parsed = await parse_transaction_text(raw.raw_text)
 
-    amount = float(match.group(2).replace(",", ""))
+    if not parsed:
+        return  # leave raw event unparsed for retry / review
 
     txn = Transaction(
         user_id=raw.user_id,
-        amount=amount,
-        currency="INR",
-        occurred_at=datetime.utcnow(),
-        merchant_raw=raw.sender,
-        description=text,
+        amount=parsed["amount"],
+        currency=parsed.get("currency", "INR"),
+        occurred_at=parsed.get("occurred_at", datetime.utcnow()),
+        merchant_raw=parsed.get("merchant"),
+        category_id=parsed.get("category_id"),
+        description=parsed.get("description"),
         source=raw.source,
         raw_event_id=raw.id,
     )
 
     db.add(txn)
-    raw.is_parsed = True
-    raw.parsed_transaction_id = txn.id
-
     await db.commit()
     await db.refresh(txn)
 
-    # budget + realtime
+    # 2. Mark raw as parsed
+    raw.is_parsed = True
+    raw.parsed_transaction_id = txn.id
+    await db.commit()
+
+    # 3. Budget + alerts
     await handle_budget_checks(db, txn)
 
+    # 4. AI explanation
+    await explain_transaction(db, txn)
+
+    # 5. Realtime push
     await manager.broadcast_to_user(
         str(raw.user_id),
         {
             "type": "transaction_created",
             "data": {
-                "amount": amount,
-                "source": raw.source,
-                "merchant": raw.sender,
+                "id": str(txn.id),
+                "amount": float(txn.amount),
+                "merchant": txn.merchant_raw,
+                "category_id": str(txn.category_id) if txn.category_id else None,
             },
         },
     )

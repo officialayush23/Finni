@@ -26,6 +26,8 @@ from app.core.database import Base
 # Enums (MUST match Postgres)
 # =========================
 
+
+
 class AssetTypeEnum(str, enum.Enum):
     stock = "stock"
     crypto = "crypto"
@@ -58,7 +60,6 @@ class RateTypeEnum(str, enum.Enum):
     fixed = "fixed"
     market_linked = "market_linked"
     api_driven = "api_driven"
-
 
 # =========================
 # 1. Users & Wallets
@@ -252,7 +253,13 @@ class Transaction(Base):
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"))
 
     source = Column(
-        SQLEnum(TxnSourceEnum, name="txn_source_enum"),
+        SQLEnum(
+            TxnSourceEnum,
+            name="txn_source_enum",
+            schema="public",
+            native_enum=True,
+            create_type=False,
+        ),
         nullable=False,
     )
 
@@ -276,15 +283,27 @@ class IncomeSource(Base):
     name = Column(String(255), nullable=False)
 
     source_type = Column(
-        SQLEnum(IncomeTypeEnum, name="income_type_enum"),
+        SQLEnum(
+            IncomeTypeEnum,
+            name="income_type_enum",
+            schema="public",
+            native_enum=True,
+            create_type=False,
+        ),
         nullable=False,
     )
 
     rate_type = Column(
-        SQLEnum(RateTypeEnum, name="rate_type_enum"),
+        SQLEnum(
+            RateTypeEnum,
+            name="rate_type_enum",
+            schema="public",
+            native_enum=True,
+            create_type=False,
+        ),
         nullable=False,
-        default=RateTypeEnum.fixed,
     )
+
 
     estimated_monthly_amount = Column(Numeric(18, 2))
     api_source_identifier = Column(String(100))
@@ -301,9 +320,16 @@ class PortfolioHolding(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
 
     asset_type = Column(
-        SQLEnum(AssetTypeEnum, name="asset_type_enum"),
+        SQLEnum(
+            AssetTypeEnum,
+            name="asset_type_enum",
+            schema="public",
+            native_enum=True,
+            create_type=False,
+        ),
         nullable=False,
     )
+
 
     identifier = Column(String(200))
     name = Column(String(255))

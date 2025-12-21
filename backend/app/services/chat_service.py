@@ -13,7 +13,7 @@ from app.models.all_models import (
 from app.core.config import settings
 import uuid
 from typing import Optional
-
+from app.services.chat_memory import embed_chat_message
 # Initialize Gemini client (async-capable)
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
@@ -143,5 +143,7 @@ Answer with actionable advice.
             ]
         )
         await self.db.commit()
+        await embed_chat_message(self.db, user_msg)
+        await embed_chat_message(self.db, ai_msg)
 
         return answer, str(session_uuid)

@@ -12,6 +12,8 @@ from app.services.ocr_service import extract_text_from_image
 from app.services.ingest_service import process_raw_event
 
 router = APIRouter()
+ALLOWED_SOURCES = {"ocr", "notification", "voice", "sms"}
+
 
 
 @router.post("/{source}")
