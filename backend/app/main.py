@@ -1,69 +1,15 @@
 # backend/CORE/app/main.py
-"""FastAPI application entry point."""
-# Load environment variables FIRST
-from dotenv import load_dotenv
-load_dotenv()
-
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from backend.CORE.app.core.config import get_settings
-from app.api import wallet
+from app.core.config import settings
+from app.api.v1.endpoints import analysis, chat, websocket, ingest
 
-settings = get_settings()
+app = FastAPI(title=settings.PROJECT_NAME)
 
-# Initialize FastAPI app
-app = FastAPI(
-    title=settings.app_name,
-    description="AI-Powered Personal Finance Assistant - Core Backend API",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
-)
-
-# CORS Middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
+app.include_router(analysis.router, prefix="/api/v1/analysis", tags=["AI Analysis"])
+app.include_router(chat.router, prefix="/api/v1/chat", tags=["AI Chat"])
+app.include_router(websocket.router, tags=["Realtime"])
+# app.include_router(ingest.router...) 
 
 @app.get("/")
 def root():
-    """Root endpoint - API health check."""
-    return {
-        "message": f"{settings.app_name} API",
-        "status": "operational",
-        "version": "1.0.0"
-    }
-
-
-@app.get("/health")
-def health_check():
-    """Health check endpoint for monitoring."""
-    return {
-        "status": "healthy",
-        "service": "backend-core"
-    }
-
-
-# Router includes
-from app.api import auth, transactions, budgets, merchants, websocket
-app.include_router(auth.router, prefix="/api")
-app.include_router(transactions.router, prefix="/api")
-app.include_router(budgets.router, prefix="/api")
-app.include_router(merchants.router, prefix="/api")
-app.include_router(websocket.router)  # No prefix - WS at /ws
-app.include_router(wallet.router, prefix="/api/wallet", tags=["Wallet"])
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(
-        "app.main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=settings.debug
-    )
+    return {"status": "System Online", "modules": ["Prophet", "FinBERT", "Gemini", "Redis"]}
