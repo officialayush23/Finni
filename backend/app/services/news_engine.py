@@ -3,15 +3,15 @@ from GoogleNews import GoogleNews
 from transformers import pipeline
 from app.schemas.schemas import NewsItem, SentimentType
 import logging
-
+import torch
 logger = logging.getLogger(__name__)
-
+device = 0 if torch.cuda.is_available() else -1
 class NewsEngine:
     def __init__(self):
         self.googlenews = GoogleNews(lang='en', region='IN')
         try:
             # Load once to save resources
-            self.classifier = pipeline("sentiment-analysis", model="ProsusAI/finbert")
+            self.classifier = pipeline("sentiment-analysis", model="ProsusAI/finbert",device=device)
         except Exception as e:
             logger.error(f"FinBERT Load Error: {e}")
             self.classifier = None

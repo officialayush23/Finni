@@ -1,14 +1,14 @@
 # app/services/chat_service.py
 
-import google.genai
+from google import genai  # This is the correct import for the new SDK
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.all_models import ChatSession, ChatMessage, Transaction, Budget
 from app.core.config import settings
 import uuid
 
-genai.configure(api_key=settings.GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-2.0-flash')
+# --- FIX 1: Initialize Client instead of configure() ---
+client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
 class ChatService:
     def __init__(self, db: AsyncSession):
@@ -47,8 +47,12 @@ class ChatService:
         Keep answer concise and actionable.
         """
         
-        # 4. Generate Answer
-        response = await model.generate_content_async(prompt)
+        # --- FIX 2: Use client.aio.models.generate_content for async ---
+        # Note: The model name is passed here, not instantiated earlier
+        response = await client.aio.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=prompt
+        )
         answer = response.text
         
         # 5. Save Interaction
