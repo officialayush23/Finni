@@ -7,7 +7,7 @@ from datetime import datetime
 from app.core.database import get_db
 from app.api.deps.auth import get_current_user, AuthUser
 from app.models.all_models import RawFinancialEvent
-from app.models.enums import TxnSourceEnum
+from app.models.all_models import TxnSourceEnum
 from app.services.ocr_service import extract_text_from_image
 from app.services.ingest_service import process_raw_event
 

@@ -5,7 +5,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from app.models.enums import TxnSourceEnum
+from app.models.all_models import TxnSourceEnum
 
 AMOUNT_REGEX = re.compile(r"(₹|rs\.?|inr)?\s?([0-9,]+(\.[0-9]{1,2})?)", re.I)
 DATE_REGEX = re.compile(r"(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})")
