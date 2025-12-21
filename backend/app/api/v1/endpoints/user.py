@@ -5,9 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.core.database import get_db
 from app.api.deps.auth import get_current_user, AuthUser
-from app.models.all_models import User
+from app.models.all_models import User, UserOnboardingRequest
 from app.schemas.schemas import UserProfileCreate, UserProfileResponse
-
+from app.services.onboarding_service import OnboardingService
 router = APIRouter()
 
 @router.post("/profile", response_model=UserProfileResponse)
@@ -46,3 +46,21 @@ async def upsert_profile(
         preferences=user.preferences,
         metadata=user.metadata_,
     )
+
+
+
+
+
+@router.post("/onboarding")
+async def onboarding(
+    payload: UserOnboardingRequest,
+    db: AsyncSession = Depends(get_db),
+    auth: AuthUser = Depends(get_current_user),
+):
+    service = OnboardingService(db)
+    await service.run(
+        user_id=auth.user_id,
+        email=auth.email,
+        payload=payload,
+    )
+    return {"status": "onboarding_complete"}

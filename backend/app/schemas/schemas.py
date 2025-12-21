@@ -5,6 +5,8 @@ from typing import List, Optional, Any
 from enum import Enum
 from uuid import UUID
 from datetime import datetime
+
+
 # --- Enums ---
 class SentimentType(str, Enum):
     POSITIVE = "positive"
@@ -124,3 +126,39 @@ class TransactionResponse(BaseModel):
     merchant_raw: Optional[str]
     description: Optional[str]
     source: str
+
+
+
+
+class IncomeOnboarding(BaseModel):
+    name: str
+    yearly_amount: float
+
+
+class InvestmentOnboarding(BaseModel):
+    asset_type: str
+    identifier: str
+    name: str
+    current_value: float
+    expected_return_pct: float
+    pinned: bool = False
+
+
+class BudgetPrefs(BaseModel):
+    daily_food_budget: Optional[float] = None
+    monthly_discretionary_budget: Optional[float] = None
+    exclude_from_food: list[str] = []
+
+
+class UserProfileOnboarding(BaseModel):
+    full_name: str
+    phone: Optional[str]
+    currency: str = "INR"
+    risk_profile: str  # conservative | moderate | aggressive
+
+
+class UserOnboardingRequest(BaseModel):
+    profile: UserProfileOnboarding
+    incomes: List[IncomeOnboarding]
+    investments: List[InvestmentOnboarding]
+    budget_preferences: Optional[BudgetPrefs]
