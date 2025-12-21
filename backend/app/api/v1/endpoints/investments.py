@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.api.deps.auth import get_current_user, AuthUser
 from app.models.all_models import PortfolioHolding
-from app.schemas.schemas import InvestmentCreate, InvestmentResponse
+from app.schemas.schemas import InvestmentCreate, InvestmentResponse, InvestmentUpdate
 from app.services.price_engine import fetch_stock_price
 from datetime import datetime
 from sqlalchemy import select
