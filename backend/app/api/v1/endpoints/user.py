@@ -5,8 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.core.database import get_db
 from app.api.deps.auth import get_current_user, AuthUser
-from app.models.all_models import User, UserOnboardingRequest
+from app.models.all_models import User
 from app.schemas.schemas import UserProfileCreate, UserProfileResponse
+from app.schemas.all_models import UserOnboardingRequest
 from app.services.onboarding_service import OnboardingService
 router = APIRouter()
 
