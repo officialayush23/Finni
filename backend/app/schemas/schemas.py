@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import List, Optional, Any
 from enum import Enum
 from uuid import UUID
+from datetime import datetime
 # --- Enums ---
 class SentimentType(str, Enum):
     POSITIVE = "positive"
@@ -102,3 +103,24 @@ class BudgetResponse(BaseModel):
     period: str
     alert_threshold: float
     is_active: bool
+
+
+class TransactionCreate(BaseModel):
+    amount: float
+    currency: str = "INR"
+    occurred_at: datetime
+    category_id: UUID
+    merchant_raw: Optional[str] = None
+    description: Optional[str] = None
+    source: str = "manual"  # manual | voice | ocr | notification
+
+
+class TransactionResponse(BaseModel):
+    id: str
+    amount: float
+    currency: str
+    occurred_at: datetime
+    category_id: str
+    merchant_raw: Optional[str]
+    description: Optional[str]
+    source: str

@@ -10,6 +10,8 @@ from app.api.v1.endpoints import (
     investments,
     budgets,
     ingest,
+    transactions,
+
 )
 
 api_router = APIRouter()
@@ -22,6 +24,12 @@ api_router.include_router(budgets.router, prefix="/budgets", tags=["Budgets"])
 api_router.include_router(ingest.router, prefix="/ingest", tags=["Ingestion"])
 api_router.include_router(analysis.router, prefix="/analysis", tags=["AI Analysis"])
 api_router.include_router(chat.router, prefix="/chat", tags=["AI Chat"])
+api_router.include_router(
+    transactions.router,
+    prefix="/transactions",
+    tags=["Transactions"],
+)
+
 
 # websocket has no prefix
 api_router.include_router(websocket.router)
