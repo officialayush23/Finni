@@ -1,4 +1,4 @@
-# backend/CORE/app/main.py
+# backend/app/main.py
 from fastapi import FastAPI
 from app.core.config import settings
 from app.api.v1.endpoints import analysis, chat, websocket, ingest

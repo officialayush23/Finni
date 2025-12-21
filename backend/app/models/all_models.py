@@ -47,13 +47,13 @@ class IncomeType(str, enum.Enum):
     OTHER = 'other'
 
 class TxnSource(str, enum.Enum):
-    MANUAL = 'manual'
-    VOICE = 'voice'
-    CHATBOT = 'chatbot'
-    CSV = 'csv'
-    NOTIFICATION = 'notification'
-    WALLET = 'wallet'
-    BLOCKCHAIN = 'blockchain'
+    OCR = "ocr"
+    SMS = "sms"
+    NOTIFICATION = "notification"
+    CSV = "csv"
+    MANUAL = "manual"
+    BLOCKCHAIN = "blockchain"
+
 
 class RateType(str, enum.Enum):
     FIXED = 'fixed'
@@ -101,16 +101,30 @@ class UserWallet(Base):
 
 class Category(Base):
     __tablename__ = "categories"
+
     id = Column(GUIDType(), primary_key=True, default=uuid.uuid4)
-    user_id = Column(GUIDType(), ForeignKey("users.id", ondelete="CASCADE"), nullable=True) # NULL = System
+    user_id = Column(
+        GUIDType(),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True  # NULL = system category
+    )
     name = Column(String(100), nullable=False)
     parent_id = Column(GUIDType(), ForeignKey("categories.id"))
     icon = Column(String(50))
     color = Column(String(20))
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
-    children = relationship("Category", backref=relationship("Category", remote_side=[id]))
-    __table_args__ = (UniqueConstraint('user_id', 'name', name='uq_user_category'),)
+    # ✅ Correct self-referencing relationship
+    parent = relationship(
+        "Category",
+        remote_side=[id],
+        backref="children"
+    )
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "name", name="uq_user_category"),
+    )
+
 
 class MerchantMaster(Base):
     __tablename__ = "merchant_master"
@@ -141,38 +155,53 @@ class MerchantCategoryMap(Base):
 
 class RawFinancialEvent(Base):
     __tablename__ = "raw_financial_events"
+
     id = Column(GUIDType(), primary_key=True, default=uuid.uuid4)
     user_id = Column(GUIDType(), ForeignKey("users.id", ondelete="CASCADE"))
-    source = Column(String(30))
+
+    source = Column(String(30), nullable=False)  # sms, ocr, notification, voice
     sender = Column(String(100))
     raw_text = Column(Text, nullable=False)
+
     received_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    parsed = Column(Boolean, default=False)
+
+    is_parsed = Column(Boolean, default=False)
+    parsed_transaction_id = Column(GUIDType())
+
+
 
 class Transaction(Base):
     __tablename__ = "transactions"
+
     id = Column(GUIDType(), primary_key=True, default=uuid.uuid4)
     user_id = Column(GUIDType(), ForeignKey("users.id", ondelete="CASCADE"))
+
     amount = Column(Numeric(18, 2), nullable=False)
-    currency = Column(String(3), default='INR')
+    currency = Column(String(3), default="INR")
+
     occurred_at = Column(DateTime(timezone=True), nullable=False)
-    
+
     merchant_id = Column(GUIDType(), ForeignKey("merchant_master.id"))
     merchant_raw = Column(Text)
     category_id = Column(GUIDType(), ForeignKey("categories.id"))
-    
-    source = Column(String, nullable=False) # Mapped to TxnSource enum in DB
+
+    source = Column(String, nullable=False)  # uses TxnSource enum
     raw_event_id = Column(GUIDType(), ForeignKey("raw_financial_events.id"))
-    
+
     description = Column(Text)
     anomaly_score = Column(Numeric(6, 4), default=0)
     blockchain_hash = Column(String(66))
-    
+
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )
 
     user = relationship("User", back_populates="transactions")
     merchant = relationship("MerchantMaster", back_populates="transactions")
+
 
 class WalletTransaction(Base):
     __tablename__ = "wallet_transactions"
