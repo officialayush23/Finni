@@ -1,6 +1,6 @@
 # app/services/chat_service.py
 
-import google.generativeai as genai
+import google.genai
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.all_models import ChatSession, ChatMessage, Transaction, Budget
@@ -8,7 +8,7 @@ from app.core.config import settings
 import uuid
 
 genai.configure(api_key=settings.GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-2.0-flash')
 
 class ChatService:
     def __init__(self, db: AsyncSession):
