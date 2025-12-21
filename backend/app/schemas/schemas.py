@@ -8,6 +8,24 @@ from datetime import datetime
 
 
 # --- Enums ---
+class IncomeRead(BaseModel):
+    id: str
+    name: str
+    estimated_monthly_amount: float
+    rate_type: str
+    ai_source_identifier: Optional[str] = None
+
+class InvestmentRead(BaseModel):
+    id: str
+    asset_type: str
+    identifier: str
+    name: str
+    current_value: Optional[float]
+    expected_return_pct: Optional[float]
+    pinned: bool
+    last_api_fetch: Optional[str]
+
+
 class SentimentType(str, Enum):
     POSITIVE = "positive"
     NEGATIVE = "negative"
@@ -63,7 +81,9 @@ class UserProfileResponse(BaseModel):
     full_name: Optional[str]
     phone: Optional[str]
     preferences: dict
-    metadata: dict
+    incomes: list[IncomeRead]
+    investments: list[InvestmentRead]
+
 
 # --- Income ---
 
@@ -92,19 +112,26 @@ class InvestmentResponse(InvestmentCreate):
 
 
 class BudgetCreate(BaseModel):
-    category_id: UUID
+    name: str
     limit_amount: float
-    period: Optional[str] = "monthly"   # monthly | weekly | yearly
-    alert_threshold: Optional[float] = 80.0
+    period: str  # daily | weekly | monthly
+    included_category_ids: list[str]
+    excluded_category_ids: list[str] = []
+    excluded_merchants: list[str] = []
+    alert_threshold: float = 80
 
 
 class BudgetResponse(BaseModel):
     id: str
-    category_id: str
+    name: str
     limit_amount: float
     period: str
     alert_threshold: float
     is_active: bool
+    spent: float
+    remaining: float
+    percentage_used: float
+
 
 
 class TransactionCreate(BaseModel):
@@ -115,6 +142,21 @@ class TransactionCreate(BaseModel):
     merchant_raw: Optional[str] = None
     description: Optional[str] = None
     source: str = "manual"  # manual | voice | ocr | notification
+
+# --- Budgets ---
+
+
+
+
+class BudgetUpdate(BaseModel):
+    name: Optional[str] = None
+    limit_amount: Optional[float] = None
+    period: Optional[str] = None
+    included_category_ids: Optional[list[str]] = None
+    excluded_category_ids: Optional[list[str]] = None
+    excluded_merchants: Optional[list[str]] = None
+    alert_threshold: Optional[float] = None
+
 
 
 class TransactionResponse(BaseModel):
@@ -162,3 +204,16 @@ class UserOnboardingRequest(BaseModel):
     incomes: List[IncomeOnboarding]
     investments: List[InvestmentOnboarding]
     budget_preferences: Optional[BudgetPrefs]
+
+
+# --- User Profile ---
+
+
+
+
+
+
+class UserProfileUpdate(BaseModel):
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    preferences: Optional[dict] = None
