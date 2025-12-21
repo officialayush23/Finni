@@ -256,3 +256,8 @@ class UserProfileUpdate(BaseModel):
     full_name: Optional[str] = None
     phone: Optional[str] = None
     preferences: Optional[dict] = None
+
+
+class IngestEventCreate(BaseModel):
+    sender: Optional[str] = None
+    raw_text: str

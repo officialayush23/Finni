@@ -116,3 +116,4 @@ wcwidth
 websockets
 wrapt
 yfinance
+google-cloud-vision=3.11.0
