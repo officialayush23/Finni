@@ -1,11 +1,10 @@
 # app/schemas/schemas.py
 
 from pydantic import BaseModel
-from typing import List, Optional, Any
+from typing import List, Optional, Any,Dict
 from enum import Enum
 from uuid import UUID
 from datetime import datetime
-
 
 # --- Enums ---
 class IncomeRead(BaseModel):
