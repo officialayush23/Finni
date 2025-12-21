@@ -20,17 +20,18 @@ async def list_budgets(
     db: AsyncSession = Depends(get_db),
     auth: AuthUser = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(Budget).where(Budget.user_id == auth.user_id)
-    )
-    budgets = result.scalars().all()
+    budgets = (
+        await db.execute(
+            select(Budget).where(Budget.user_id == auth.user_id)
+        )
+    ).scalars().all()
 
-    response = []
+    out = []
     for b in budgets:
         spent = await calculate_budget_spent(db, auth.user_id, b)
         pct = (spent / b.limit_amount) * 100 if b.limit_amount else 0
 
-        response.append(
+        out.append(
             BudgetResponse(
                 id=str(b.id),
                 name=b.name,
@@ -43,11 +44,8 @@ async def list_budgets(
                 percentage_used=round(pct, 2),
             )
         )
+    return out
 
-    return response
-
-
-    return response
 @router.post("/", response_model=BudgetResponse)
 async def create_budget(
     payload: BudgetCreate,
@@ -60,13 +58,12 @@ async def create_budget(
         limit_amount=payload.limit_amount,
         period=payload.period,
         alert_threshold=payload.alert_threshold,
-        metadata={
-            "included_category_ids": payload.included_category_ids,
-            "excluded_category_ids": payload.excluded_category_ids,
-            "excluded_merchants": payload.excluded_merchants,
-        },
+       metadata_={
+        "included_category_ids": payload.included_category_ids,
+        "excluded_category_ids": payload.excluded_category_ids,
+        "excluded_merchants": payload.excluded_merchants,
+    },
     )
-
     db.add(budget)
     await db.commit()
     await db.refresh(budget)
@@ -77,13 +74,11 @@ async def create_budget(
         limit_amount=budget.limit_amount,
         period=budget.period,
         alert_threshold=budget.alert_threshold,
-        is_active=budget.is_active,
+        is_active=True,
         spent=0,
         remaining=budget.limit_amount,
         percentage_used=0,
     )
-
-
 @router.patch("/{budget_id}")
 async def update_budget(
     budget_id: str,
@@ -92,15 +87,15 @@ async def update_budget(
     auth: AuthUser = Depends(get_current_user),
 ):
     budget = await db.get(Budget, budget_id)
-
     if not budget or budget.user_id != auth.user_id:
-        raise HTTPException(status_code=404, detail="Budget not found")
+        raise HTTPException(404, "Budget not found")
 
-    for field, value in payload.model_dump(exclude_unset=True).items():
-        if field in ["included_category_ids", "excluded_category_ids", "excluded_merchants"]:
-            budget.metadata[field] = value
+    data = payload.model_dump(exclude_unset=True)
+    for k, v in data.items():
+        if k in ["included_category_ids", "excluded_category_ids", "excluded_merchants"]:
+            budget.metadata_[k] = v 
         else:
-            setattr(budget, field, value)
+            setattr(budget, k, v)
 
     await db.commit()
     return {"status": "updated"}

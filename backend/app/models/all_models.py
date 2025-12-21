@@ -265,22 +265,31 @@ class GoalAllocation(Base):
     portfolio_holding = relationship("PortfolioHolding", back_populates="allocations")
 
 
+# app/models/all_models.py
+
 class Budget(Base):
     __tablename__ = "budgets"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
-    category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"))
-    limit_amount = Column(Numeric(18, 2))
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+
+    name = Column(String(255), nullable=False)
+    limit_amount = Column(Numeric(18, 2), nullable=False)
     period = Column(String(20), default="monthly")
     alert_threshold = Column(Numeric(5, 2), default=80)
     is_active = Column(Boolean, default=True)
 
-    user = relationship("User", back_populates="budgets")
+    # ✅ FIX: use metadata_ in Python, map to "metadata" in DB
+    metadata_ = Column("metadata", JSONB, default=dict)
 
-    __table_args__ = (
-        UniqueConstraint("user_id", "category_id", name="uq_user_budget_cat"),
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
     )
+
+    user = relationship("User", back_populates="budgets")
 
 
 # =========================
