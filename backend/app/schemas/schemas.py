@@ -99,16 +99,41 @@ class IncomeResponse(IncomeCreate):
 
 # --- Investments ---
 
+# --- Investments ---
+
 class InvestmentCreate(BaseModel):
+    asset_type: str              # stock | mutual_fund | crypto
+    identifier: str              # Ticker / MF code / contract
+    name: Optional[str] = None
+    quantity: float
+    avg_buy_price: float
+    expected_annual_return: Optional[float] = None
+    risk_level: Optional[str] = None
+    is_pinned: bool = False
+
+
+class InvestmentUpdate(BaseModel):
+    quantity: Optional[float] = None
+    avg_buy_price: Optional[float] = None
+    expected_annual_return: Optional[float] = None
+    risk_level: Optional[str] = None
+    is_pinned: Optional[bool] = None
+
+
+class InvestmentResponse(BaseModel):
+    id: str
     asset_type: str
     identifier: str
     name: Optional[str]
     quantity: float
     avg_buy_price: float
-
-class InvestmentResponse(InvestmentCreate):
-    id: str
     current_value: Optional[float]
+    last_api_fetch: Optional[str]
+    expected_annual_return: Optional[float]
+    risk_level: Optional[str]
+    is_pinned: bool
+
+
 
 
 class BudgetCreate(BaseModel):
