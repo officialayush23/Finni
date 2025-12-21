@@ -1,64 +1,147 @@
 # app/services/chat_service.py
+# app/services/chat_service.py
 
-from google import genai  # This is the correct import for the new SDK
+from google import genai
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.models.all_models import ChatSession, ChatMessage, Transaction, Budget
+from app.models.all_models import (
+    ChatSession,
+    ChatMessage,
+    Transaction,
+    Budget,
+)
 from app.core.config import settings
 import uuid
+from typing import Optional
 
-# --- FIX 1: Initialize Client instead of configure() ---
+# Initialize Gemini client (async-capable)
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
+
 
 class ChatService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_financial_context(self, user_id: uuid.UUID) -> str:
-        """Fetch user's financial snapshot for the LLM"""
-        # 1. Get recent transactions
-        result = await self.db.execute(select(Transaction).filter(Transaction.user_id == user_id).limit(5))
-        txns = result.scalars().all()
-        txn_str = "\n".join([f"- {t.amount} INR at {t.merchant_raw} ({t.category_id})" for t in txns])
-        
-        # 2. Get Budgets
-        result = await self.db.execute(select(Budget).filter(Budget.user_id == user_id))
-        budgets = result.scalars().all()
-        budget_str = "\n".join([f"- Limit: {b.limit_amount} INR" for b in budgets])
-        
-        return f"Recent Transactions:\n{txn_str}\n\nBudgets:\n{budget_str}"
-
-    async def process_message(self, user_id: uuid.UUID, message: str, session_id: str = None):
-        # 1. Create/Get Session
-        if not session_id:
-            new_session = ChatSession(user_id=user_id, session_name=message[:20])
-            self.db.add(new_session)
-            await self.db.commit()
-            session_id = new_session.id
-        
-        # 2. Get Context
-        context = await self.get_financial_context(user_id)
-        
-        # 3. Prompt Engineering
-        prompt = f"""
-        You are a smart financial advisor. Use the user's data below to answer.
-        User Data: {context}
-        User Question: {message}
-        Keep answer concise and actionable.
+    async def _get_or_create_session(
+        self,
+        user_id: uuid.UUID,
+        session_id: Optional[str],
+        message: str,
+    ) -> uuid.UUID:
         """
-        
-        # --- FIX 2: Use client.aio.models.generate_content for async ---
-        # Note: The model name is passed here, not instantiated earlier
-        response = await client.aio.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=prompt
+        Fetch an existing chat session or create a new one.
+        """
+        if session_id:
+            return uuid.UUID(session_id)
+
+        new_session = ChatSession(
+            user_id=user_id,
+            session_name=message[:40],
         )
-        answer = response.text
-        
-        # 5. Save Interaction
-        user_msg = ChatMessage(session_id=session_id, sender="user", content=message)
-        ai_msg = ChatMessage(session_id=session_id, sender="ai", content=answer)
-        self.db.add_all([user_msg, ai_msg])
+        self.db.add(new_session)
         await self.db.commit()
-        
-        return answer, str(session_id)
+        await self.db.refresh(new_session)
+        return new_session.id
+
+    async def get_financial_context(self, user_id: uuid.UUID) -> str:
+        """
+        Build a compact financial snapshot for LLM grounding.
+        """
+        # Recent transactions
+        txn_result = await self.db.execute(
+            select(Transaction)
+            .where(Transaction.user_id == user_id)
+            .order_by(Transaction.occurred_at.desc())
+            .limit(5)
+        )
+        txns = txn_result.scalars().all()
+
+        txn_lines = [
+            f"- ₹{t.amount} at {t.merchant_raw or 'Unknown'}"
+            for t in txns
+        ] or ["- No recent transactions"]
+
+        # Budgets
+        budget_result = await self.db.execute(
+            select(Budget).where(Budget.user_id == user_id)
+        )
+        budgets = budget_result.scalars().all()
+
+        budget_lines = [
+            f"- {b.limit_amount} INR limit"
+            for b in budgets
+        ] or ["- No budgets set"]
+
+        return (
+            "Recent Transactions:\n"
+            + "\n".join(txn_lines)
+            + "\n\nBudgets:\n"
+            + "\n".join(budget_lines)
+        )
+
+    async def process_message(
+        self,
+        user_id: uuid.UUID,
+        message: str,
+        session_id: Optional[str] = None,
+    ) -> tuple[str, str]:
+        """
+        Core chat flow:
+        - session handling
+        - context gathering
+        - Gemini call
+        - persistence
+        """
+
+        # 1. Session
+        session_uuid = await self._get_or_create_session(
+            user_id=user_id,
+            session_id=session_id,
+            message=message,
+        )
+
+        # 2. Context
+        context = await self.get_financial_context(user_id)
+
+        # 3. Prompt
+        prompt = f"""
+You are a personal AI financial assistant.
+
+Use the user's real financial data below.
+Be precise, concise, and practical.
+
+USER DATA:
+{context}
+
+USER QUESTION:
+{message}
+
+Answer with actionable advice.
+"""
+
+        # 4. Gemini async call
+        response = await client.aio.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+        )
+
+        answer = response.text.strip()
+
+        # 5. Persist messages
+        self.db.add_all(
+            [
+                ChatMessage(
+                    session_id=session_uuid,
+                    sender="user",
+                    content=message,
+                ),
+                ChatMessage(
+                    session_id=session_uuid,
+                    sender="ai",
+                    content=answer,
+                ),
+            ]
+        )
+        await self.db.commit()
+
+        return answer, str(session_uuid)

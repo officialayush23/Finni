@@ -1,15 +1,29 @@
 # backend/app/main.py
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.v1.endpoints import analysis, chat, websocket, ingest
+from app.api.v1.api import api_router
 
-app = FastAPI(title=settings.PROJECT_NAME)
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    debug=settings.DEBUG,
+)
 
-app.include_router(analysis.router, prefix="/api/v1/analysis", tags=["AI Analysis"])
-app.include_router(chat.router, prefix="/api/v1/chat", tags=["AI Chat"])
-app.include_router(websocket.router, tags=["Realtime"])
-# app.include_router(ingest.router...) 
+# CORS (needed for Expo / web)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.all_cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Mount API
+app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 def root():
-    return {"status": "System Online", "modules": ["Prophet", "FinBERT", "Gemini", "Redis"]}
+    return {
+        "status": "System Online",
+        "modules": ["Prophet", "FinBERT", "Gemini", "Redis"],
+    }

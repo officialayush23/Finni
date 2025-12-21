@@ -333,9 +333,10 @@ class ChatMessage(Base):
 
 class AIExplanation(Base):
     __tablename__ = "ai_explanations"
+
     id = Column(GUIDType(), primary_key=True, default=uuid.uuid4)
-    entity_type = Column(String(50))
+    entity_type = Column(String(50))  # transaction, goal, portfolio, chat
     entity_id = Column(GUIDType())
     explanation = Column(JSONB)
-    model = Column(String(50))
+    model = Column(String(50))  # gemini, finbert, prophet
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)

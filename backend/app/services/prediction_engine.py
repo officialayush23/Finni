@@ -1,4 +1,4 @@
-# CORE/app/services/prediction_engine.py
+# app/services/prediction_engine.py
 
 import yfinance as yf
 import requests

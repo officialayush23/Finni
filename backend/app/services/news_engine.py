@@ -1,4 +1,4 @@
-# CORE/app/services/news_engine.py
+# app/services/news_engine.py
 from GoogleNews import GoogleNews
 from transformers import pipeline
 from app.schemas.schemas import NewsItem, SentimentType
