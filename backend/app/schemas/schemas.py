@@ -87,15 +87,29 @@ class UserProfileResponse(BaseModel):
 
 # --- Income ---
 
+# --- Income ---
+
 class IncomeCreate(BaseModel):
     name: str
-    source_type: str
-    rate_type: str = "fixed"
+    source_type: str            # salary | business | rental | dividend | interest
+    rate_type: str              # fixed | market_linked | api_driven
     estimated_monthly_amount: float
+    api_source_identifier: Optional[str] = None
 
-class IncomeResponse(IncomeCreate):
+
+class IncomeUpdate(BaseModel):
+    estimated_monthly_amount: Optional[float] = None
+    is_active: Optional[bool] = None
+
+
+class IncomeResponse(BaseModel):
     id: str
+    name: str
+    source_type: str
+    rate_type: str
+    estimated_monthly_amount: float
     is_active: bool
+
 
 # --- Investments ---
 
