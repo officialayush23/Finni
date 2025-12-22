@@ -16,7 +16,7 @@ Detect anomalies if any.
 Amount: {txn.amount}
 Merchant: {txn.merchant_raw}
 Category ID: {txn.category_id}
-Source: {txn.source}
+Source: {txn.source.value}
 """
 
     explanation = await generate_text(prompt)
