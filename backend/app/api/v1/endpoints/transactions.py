@@ -1,11 +1,11 @@
-# app/api/v1/endpoints/transactions.py
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import date
+
 from app.core.database import get_db
 from app.api.deps.auth import get_current_user, AuthUser
-from app.models.all_models import Transaction
+from app.models.all_models import Transaction, TxnSourceEnum
 from app.schemas.schemas import TransactionCreate, TransactionResponse
 from app.services.transaction_service import handle_budget_checks
 
@@ -26,7 +26,7 @@ async def create_transaction(
         category_id=payload.category_id,
         merchant_raw=payload.merchant_raw,
         description=payload.description,
-        source=TxnSourceEnum(payload.source),  # ✅ FIX
+        source=TxnSourceEnum(payload.source),  # ✅ string → enum
     )
 
     db.add(txn)
@@ -40,11 +40,12 @@ async def create_transaction(
         amount=txn.amount,
         currency=txn.currency,
         occurred_at=txn.occurred_at,
-        category_id=str(txn.category_id),
+        category_id=str(txn.category_id) if txn.category_id else None,
         merchant_raw=txn.merchant_raw,
         description=txn.description,
-        source=txn.source.value,
+        source=txn.source.value,  # ✅ enum → string
     )
+
 
 @router.get("/", response_model=list[TransactionResponse])
 async def list_transactions(
@@ -69,10 +70,10 @@ async def list_transactions(
             amount=t.amount,
             currency=t.currency,
             occurred_at=t.occurred_at,
-            category_id=str(t.category_id),
+            category_id=str(t.category_id) if t.category_id else None,
             merchant_raw=t.merchant_raw,
             description=t.description,
-            source=t.source,
+            source=t.source.value,  # ✅ FIX
         )
         for t in txns
     ]
@@ -97,7 +98,10 @@ async def update_transaction(
         raise HTTPException(status_code=404, detail="Transaction not found")
 
     for field, value in payload.model_dump(exclude_unset=True).items():
-        setattr(txn, field, value)
+        if field == "source":
+            setattr(txn, field, TxnSourceEnum(value))  # ✅ FIX
+        else:
+            setattr(txn, field, value)
 
     await db.commit()
     await db.refresh(txn)
@@ -107,8 +111,8 @@ async def update_transaction(
         amount=txn.amount,
         currency=txn.currency,
         occurred_at=txn.occurred_at,
-        category_id=str(txn.category_id),
+        category_id=str(txn.category_id) if txn.category_id else None,
         merchant_raw=txn.merchant_raw,
         description=txn.description,
-        source=txn.source,
+        source=txn.source.value,  # ✅ FIX
     )
