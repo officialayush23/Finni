@@ -14,7 +14,6 @@ router = APIRouter()
 
 
 
-
 @router.get("/", response_model=list[BudgetResponse])
 async def list_budgets(
     db: AsyncSession = Depends(get_db),
@@ -28,8 +27,13 @@ async def list_budgets(
 
     out = []
     for b in budgets:
-        spent = await calculate_budget_spent(db, auth.user_id, b)
-        pct = (spent / b.limit_amount) * 100 if b.limit_amount else 0
+        spent = await calculate_budget_spent(
+            db=db,
+            user_id=auth.user_id,
+            budget=b,
+        )
+
+        pct = (spent / float(b.limit_amount)) * 100 if b.limit_amount else 0
 
         out.append(
             BudgetResponse(
@@ -40,10 +44,11 @@ async def list_budgets(
                 alert_threshold=b.alert_threshold,
                 is_active=b.is_active,
                 spent=spent,
-                remaining=max(b.limit_amount - spent, 0),
+                remaining=max(float(b.limit_amount) - spent, 0),
                 percentage_used=round(pct, 2),
             )
         )
+
     return out
 
 @router.post("/", response_model=BudgetResponse)

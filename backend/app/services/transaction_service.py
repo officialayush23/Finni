@@ -25,9 +25,9 @@ async def handle_budget_checks(
             budget=budget,
         )
 
-        pct = (spent / budget.limit_amount) * 100 if budget.limit_amount else 0
+        pct = (spent / float(budget.limit_amount)) * 100 if budget.limit_amount else 0
 
-        if pct >= budget.alert_threshold:
+        if pct >= float(budget.alert_threshold):
             await send_budget_alert(
                 user_id=transaction.user_id,
                 category_name=budget.name,

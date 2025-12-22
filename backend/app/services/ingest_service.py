@@ -2,7 +2,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 
-from app.models.all_models import RawFinancialEvent, Transaction
+from app.models.all_models import RawFinancialEvent, Transaction, TxnSourceEnum
 from app.services.transaction_ai import explain_transaction
 from app.services.transaction_service import handle_budget_checks
 from app.services.websocket_manager import manager
@@ -14,10 +14,10 @@ async def process_raw_event(
     raw: RawFinancialEvent,
 ):
     parsed = await parse_transaction_text(raw.raw_text)
-
     if not parsed:
         return
 
+    # 🔥 CRITICAL FIX: normalize enum
     txn = Transaction(
         user_id=raw.user_id,
         amount=parsed["amount"],
@@ -26,8 +26,7 @@ async def process_raw_event(
         merchant_raw=parsed.get("merchant"),
         category_id=parsed.get("category_id"),
         description=parsed.get("description"),
-        source=raw.source,          # already normalized
-        raw_event_id=raw.id,        # ✅ FIX
+        source=TxnSourceEnum(raw.source),  # ✅ ENUM, not string
     )
 
     db.add(txn)
@@ -50,6 +49,7 @@ async def process_raw_event(
                 "amount": float(txn.amount),
                 "merchant": txn.merchant_raw,
                 "category_id": str(txn.category_id) if txn.category_id else None,
+                "source": txn.source.value,
             },
         },
     )

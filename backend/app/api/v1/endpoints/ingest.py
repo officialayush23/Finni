@@ -1,16 +1,10 @@
-# # app/api/v1/endpoints/ingest.py
-
-# app/api/v1/endpoints/ingest.py
 from fastapi import APIRouter, Depends, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 
 from app.core.database import get_db
 from app.api.deps.auth import get_current_user, AuthUser
-
-=======
 from app.models.all_models import RawFinancialEvent, TxnSourceEnum
-
 from app.services.ocr_service import extract_text_from_image
 from app.services.ingest_service import process_raw_event
 
@@ -27,7 +21,7 @@ async def ingest_event(
 ):
     raw = RawFinancialEvent(
         user_id=auth.user_id,
-        source=source.value,  # ✅ enum → string
+        source=source.value,   # ✅ store string
         sender=sender,
         raw_text=raw_text,
         received_at=datetime.utcnow(),
@@ -63,7 +57,4 @@ async def ingest_ocr(
 
     await process_raw_event(db, raw)
 
-
-=======
     return {"status": "parsed", "raw_event_id": str(raw.id)}
-

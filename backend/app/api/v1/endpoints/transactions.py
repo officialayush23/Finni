@@ -26,14 +26,13 @@ async def create_transaction(
         category_id=payload.category_id,
         merchant_raw=payload.merchant_raw,
         description=payload.description,
-        source=payload.source,
+        source=TxnSourceEnum(payload.source),  # ✅ FIX
     )
 
     db.add(txn)
     await db.commit()
     await db.refresh(txn)
 
-    # 🔥 Budget + WebSocket logic
     await handle_budget_checks(db, txn)
 
     return TransactionResponse(
@@ -44,7 +43,7 @@ async def create_transaction(
         category_id=str(txn.category_id),
         merchant_raw=txn.merchant_raw,
         description=txn.description,
-        source=txn.source,
+        source=txn.source.value,
     )
 
 @router.get("/", response_model=list[TransactionResponse])
