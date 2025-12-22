@@ -1,59 +1,55 @@
 # app/services/ingest_service.py
-
-import re
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 
 from app.models.all_models import RawFinancialEvent, Transaction
+from app.services.transaction_ai import explain_transaction
 from app.services.transaction_service import handle_budget_checks
 from app.services.websocket_manager import manager
+from app.services.parsers.simple_parser import parse_transaction_text
 
-AMOUNT_REGEX = r"(₹|Rs\.?)\s?([\d,]+\.?\d*)"
 
 async def process_raw_event(
     db: AsyncSession,
     raw: RawFinancialEvent,
 ):
-    """
-    Parse raw text → create transaction
-    """
-    text = raw.raw_text
+    parsed = await parse_transaction_text(raw.raw_text)
 
-    match = re.search(AMOUNT_REGEX, text)
-    if not match:
+    if not parsed:
         return
-
-    amount = float(match.group(2).replace(",", ""))
 
     txn = Transaction(
         user_id=raw.user_id,
-        amount=amount,
-        currency="INR",
-        occurred_at=datetime.utcnow(),
-        merchant_raw=raw.sender,
-        description=text,
-        source=raw.source,
-        raw_event_id=raw.id,
+        amount=parsed["amount"],
+        currency=parsed.get("currency", "INR"),
+        occurred_at=parsed.get("occurred_at", datetime.utcnow()),
+        merchant_raw=parsed.get("merchant"),
+        category_id=parsed.get("category_id"),
+        description=parsed.get("description"),
+        source=raw.source,          # already normalized
+        raw_event_id=raw.id,        # ✅ FIX
     )
 
     db.add(txn)
-    raw.is_parsed = True
-    raw.parsed_transaction_id = txn.id
-
     await db.commit()
     await db.refresh(txn)
 
-    # budget + realtime
+    raw.is_parsed = True
+    raw.parsed_transaction_id = txn.id
+    await db.commit()
+
     await handle_budget_checks(db, txn)
+    await explain_transaction(db, txn)
 
     await manager.broadcast_to_user(
         str(raw.user_id),
         {
             "type": "transaction_created",
             "data": {
-                "amount": amount,
-                "source": raw.source,
-                "merchant": raw.sender,
+                "id": str(txn.id),
+                "amount": float(txn.amount),
+                "merchant": txn.merchant_raw,
+                "category_id": str(txn.category_id) if txn.category_id else None,
             },
         },
     )

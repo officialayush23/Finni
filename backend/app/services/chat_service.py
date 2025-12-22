@@ -13,7 +13,7 @@ from app.models.all_models import (
 from app.core.config import settings
 import uuid
 from typing import Optional
-
+from app.services.chat_memory import embed_chat_message
 # Initialize Gemini client (async-capable)
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
@@ -85,41 +85,27 @@ class ChatService:
         message: str,
         session_id: Optional[str] = None,
     ) -> tuple[str, str]:
-        """
-        Core chat flow:
-        - session handling
-        - context gathering
-        - Gemini call
-        - persistence
-        """
 
-        # 1. Session
         session_uuid = await self._get_or_create_session(
             user_id=user_id,
             session_id=session_id,
             message=message,
         )
 
-        # 2. Context
         context = await self.get_financial_context(user_id)
 
-        # 3. Prompt
         prompt = f"""
 You are a personal AI financial assistant.
-
-Use the user's real financial data below.
-Be precise, concise, and practical.
 
 USER DATA:
 {context}
 
-USER QUESTION:
+QUESTION:
 {message}
 
-Answer with actionable advice.
+Give clear, actionable advice.
 """
 
-        # 4. Gemini async call
         response = await client.aio.models.generate_content(
             model="gemini-2.0-flash",
             contents=prompt,
@@ -127,21 +113,21 @@ Answer with actionable advice.
 
         answer = response.text.strip()
 
-        # 5. Persist messages
-        self.db.add_all(
-            [
-                ChatMessage(
-                    session_id=session_uuid,
-                    sender="user",
-                    content=message,
-                ),
-                ChatMessage(
-                    session_id=session_uuid,
-                    sender="ai",
-                    content=answer,
-                ),
-            ]
+        user_msg = ChatMessage(
+            session_id=session_uuid,
+            sender="user",
+            content=message,
         )
+        ai_msg = ChatMessage(
+            session_id=session_uuid,
+            sender="ai",
+            content=answer,
+        )
+
+        self.db.add_all([user_msg, ai_msg])
         await self.db.commit()
+
+        await embed_chat_message(self.db, user_msg)
+        await embed_chat_message(self.db, ai_msg)
 
         return answer, str(session_uuid)

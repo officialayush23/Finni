@@ -2,6 +2,7 @@
 
 from google import genai
 from app.core.config import settings
+import json
 
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
@@ -22,4 +23,4 @@ async def categorize_transaction(text: str) -> dict:
         contents=prompt,
     )
 
-    return eval(resp.text)
+    return json.loads(resp.text)

@@ -1,10 +1,10 @@
 # app/schemas/schemas.py
 
 from pydantic import BaseModel
-from typing import List, Optional, Any,Dict
+from typing import List, Optional, Any,Dict, Union
 from enum import Enum
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime,date
 
 # --- Enums ---
 class IncomeRead(BaseModel):
@@ -269,3 +269,34 @@ class AICategorizationResult(BaseModel):
     confidence: float
     signals: Dict[str, bool]
     explanation: str
+
+
+# --- Goals ---
+
+class GoalCreate(BaseModel):
+    name: str
+    target_amount: float
+    target_date: date
+
+
+class GoalUpdate(BaseModel):
+    name: Optional[str] = None
+    target_amount: Optional[float] = None
+    target_date: Optional[date] = None
+    status: Optional[str] = None
+
+
+class GoalAllocationCreate(BaseModel):
+    income_source_id: Optional[UUID] = None
+    portfolio_holding_id: Optional[UUID] = None
+    allocation_percentage: Optional[float] = None
+    allocation_fixed_amount: Optional[float] = None
+
+
+class GoalResponse(BaseModel):
+    id: str
+    name: str
+    target_amount: float
+    current_amount: float
+    target_date: date
+    status: str
