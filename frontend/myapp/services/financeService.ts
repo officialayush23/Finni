@@ -145,6 +145,8 @@
 // services/financeService.ts
 import { api } from './api';
 import { 
+  CreateTransactionRequest , Transaction ,
+  Budget, CreateBudgetRequest, UpdateBudgetRequest ,
   Income, CreateIncomeRequest, UpdateIncomeRequest ,
   Investment, CreateInvestmentRequest, UpdateInvestmentRequest
 } from '../types/api';
@@ -193,6 +195,42 @@ export const FinanceService = {
   // 4. REFRESH (Force update current price)
   refreshInvestment: async (id: string): Promise<string> => {
     const response = await api.post(`/api/v1/investments/${id}/refresh`);
+    return response.data;
+  },
+
+  // 1. GET ALL
+  getBudgets: async (): Promise<Budget[]> => {
+    const response = await api.get('/api/v1/budgets/');
+    return response.data;
+  },
+
+  // 2. CREATE
+  createBudget: async (data: CreateBudgetRequest): Promise<Budget> => {
+    const response = await api.post('/api/v1/budgets/', data);
+    return response.data;
+  },
+
+  // 3. UPDATE
+  updateBudget: async (id: string, data: UpdateBudgetRequest): Promise<string> => {
+    const response = await api.patch(`/api/v1/budgets/${id}`, data);
+    return response.data;
+  },
+
+  // --- TRANSACTIONS ---
+  getTransactions: async (startDate?: string, endDate?: string): Promise<Transaction[]> => {
+    const response = await api.get('/api/v1/transactions/', {
+      params: { start_date: startDate, end_date: endDate }
+    });
+    return response.data;
+  },
+
+  createTransaction: async (data: CreateTransactionRequest): Promise<Transaction> => {
+    const response = await api.post('/api/v1/transactions/', data);
+    return response.data;
+  },
+
+  updateTransaction: async (id: string, data: Partial<CreateTransactionRequest>): Promise<Transaction> => {
+    const response = await api.patch(`/api/v1/transactions/${id}`, data);
     return response.data;
   }
 };
