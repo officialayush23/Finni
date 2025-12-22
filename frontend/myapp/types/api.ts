@@ -128,3 +128,96 @@ export interface UpdateInvestmentRequest {
   risk_level?: string;
   is_pinned?: boolean;
 }
+
+// types/api.ts
+
+// --- AI ANALYSIS ---
+export interface GraphPoint {
+  date: string;
+  price: number;
+  type: 'historical' | 'predicted';
+  confidence_lower?: number;
+  confidence_upper?: number;
+}
+
+export interface AnalysisMetrics {
+  current_price: number;
+  predicted_price_30d: number;
+  growth_percentage: number;
+  risk_score: number; // 0-100
+}
+
+export interface NewsItem {
+  title: string;
+  source: string;
+  sentiment: 'positive' | 'negative' | 'neutral';
+  score: number;
+}
+
+export interface AnalysisResponse {
+  symbol: string;
+  graph_data: GraphPoint[];
+  metrics: AnalysisMetrics;
+  news: NewsItem[];
+}
+
+// types/api.ts
+
+// --- BUDGETS ---
+export type BudgetPeriod = 'monthly' | 'weekly' | 'yearly' | 'custom';
+
+export interface Budget {
+  id: string;
+  name: string;
+  limit_amount: number;
+  period: BudgetPeriod;
+  alert_threshold: number; // e.g. 80 for 80%
+  is_active: boolean;
+  spent: number;           // calculated by backend
+  remaining: number;       // calculated by backend
+  percentage_used: number; // calculated by backend
+}
+
+export interface CreateBudgetRequest {
+  name: string;
+  limit_amount: number;
+  period: string; // 'monthly'
+  included_category_ids?: string[]; // Optional for now
+  excluded_category_ids?: string[];
+  excluded_merchants?: string[];
+  alert_threshold?: number;
+}
+
+export interface UpdateBudgetRequest {
+  name?: string;
+  limit_amount?: number;
+  period?: string;
+  alert_threshold?: number;
+  is_active?: boolean;
+}
+
+// types/api.ts
+
+export type TransactionSource = 'manual' | 'voice' | 'chatbot' | 'csv' | 'notification' | 'wallet' | 'blockchain';
+
+export interface Transaction {
+  id: string;
+  amount: number;
+  currency: string;
+  occurred_at: string;
+  category_id: string;
+  merchant_raw: string;
+  description: string;
+  source: TransactionSource;
+}
+
+export interface CreateTransactionRequest {
+  amount: number;
+  currency: string;
+  occurred_at: string; // ISO String
+  category_id?: string;
+  merchant_raw: string;
+  description: string;
+  source: string;
+}
+
