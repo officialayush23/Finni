@@ -14,6 +14,10 @@ from app.core.config import settings
 import uuid
 from typing import Optional
 from app.services.chat_memory import embed_chat_message
+from app.services.chat_actions import maybe_create_budget
+from app.services.chat_actions import maybe_create_budget
+from app.services.websocket_manager import manager
+
 # Initialize Gemini client (async-capable)
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
@@ -112,6 +116,23 @@ Give clear, actionable advice.
         )
 
         answer = response.text.strip()
+   
+        budget = await maybe_create_budget(self.db, user_id, answer)
+
+        if budget:
+            await manager.broadcast_to_user(
+                str(user_id),
+                {
+                    "type": "budget_created",
+                    "data": {
+                        "id": str(budget.id),
+                        "name": budget.name,
+                        "limit_amount": float(budget.limit_amount),
+                        "period": budget.period,
+                    },
+                },
+            )
+
 
         user_msg = ChatMessage(
             session_id=session_uuid,
@@ -126,8 +147,8 @@ Give clear, actionable advice.
 
         self.db.add_all([user_msg, ai_msg])
         await self.db.commit()
-
+       
         await embed_chat_message(self.db, user_msg)
         await embed_chat_message(self.db, ai_msg)
-
+       
         return answer, str(session_uuid)
