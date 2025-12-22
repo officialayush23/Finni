@@ -263,12 +263,17 @@ class Transaction(Base):
         nullable=False,
     )
 
+    raw_event_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("raw_financial_events.id"),
+        nullable=True,
+    )
+
     description = Column(Text)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     user = relationship("User", back_populates="transactions")
     merchant = relationship("MerchantMaster", back_populates="transactions")
-
 
 # =========================
 # 4. Income & Portfolio
