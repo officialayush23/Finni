@@ -17,7 +17,8 @@ from app.services.chat_memory import embed_chat_message
 from app.services.chat_actions import maybe_create_budget
 from app.services.chat_actions import maybe_create_budget
 from app.services.websocket_manager import manager
-
+from app.services.ai.budget_action import detect_budget_action
+from app.services.budget_actions import create_budget_from_ai
 # Initialize Gemini client (async-capable)
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
@@ -114,6 +115,28 @@ Give clear, actionable advice.
             model="gemini-2.0-flash",
             contents=prompt,
         )
+
+                # 🔹 Detect AI action
+        txn_context = "\n".join(
+            f"₹{t.amount} at {t.merchant_raw}" for t in txns
+        ) or "No recent transactions"
+
+        action = await detect_budget_action(message, txn_context)
+
+        if action.action == "create_budget":
+            budget = await create_budget_from_ai(
+                db=self.db,
+                user_id=user_id,
+                name=action.name or "AI Suggested Budget",
+                limit_amount=action.limit_amount,
+                period=action.period or "monthly",
+            )
+
+            return (
+                f"✅ Budget '{budget.name}' created with a limit of ₹{budget.limit_amount} ({budget.period}).",
+                str(session_uuid),
+            )
+
 
         answer = response.text.strip()
    
