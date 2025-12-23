@@ -33,7 +33,7 @@ module.exports = function (api) {
           logTimings: true,
           // 🚀 THIS IS THE FIX: Disable extraction for production to stop the Render crash.
           // In development (on your laptop), it stays 'false' so you get fast reloads.
-          disableExtraction: process.env.NODE_ENV === 'production', 
+          disableExtraction: true, 
         },
       ],
       'react-native-reanimated/plugin', // Keep this as the last plugin
