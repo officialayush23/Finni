@@ -37,21 +37,37 @@ export interface Investment {
   avg_buy_price: number;
 }
 
-export interface UserProfile {
-  id: string;
-  email: string;
-  full_name?: string;
-  phone?: string;
-  preferences?: Record<string, any>;
-  incomes?: Income[];
-  investments?: Investment[];
-}
+// export interface UserProfile {
+//   id: string;
+//   email: string;
+//   full_name?: string;
+//   phone?: string;
+//   preferences?: Record<string, any>;
+//   incomes?: Income[];
+//   investments?: Investment[];
+// }
 
 export interface CreateProfileRequest {
   full_name: string;
   phone?: string;
   preferences?: object;
   metadata?: object;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  full_name: string;
+  phone: string;
+  preferences: Record<string, any>;
+  incomes?: any[];      // Returned in GET
+  investments?: any[];  // Returned in GET
+}
+
+export interface ProfileUpdatePayload {
+  full_name?: string;
+  phone?: string;
+  preferences?: Record<string, any>;
 }
 
 export interface OnboardingRequest {
