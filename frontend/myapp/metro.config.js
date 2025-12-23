@@ -31,7 +31,7 @@ const isProd = process.env.NODE_ENV === 'production';
 
 const config = getDefaultConfig(__dirname, {
   // 🚀 FIX 1: Disable CSS extraction in production to stop the "Missing CSS" crash
-  isCSSEnabled: isProd ? false : true,
+  isCSSEnabled:  false ,
 })
 
 config.resolver.sourceExts.push('mjs')

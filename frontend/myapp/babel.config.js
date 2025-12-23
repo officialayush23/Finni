@@ -31,8 +31,6 @@ module.exports = function (api) {
           components: ['tamagui'],
           config: './tamagui.config.ts',
           logTimings: true,
-          // 🚀 THIS IS THE FIX: Disable extraction for production to stop the Render crash.
-          // In development (on your laptop), it stays 'false' so you get fast reloads.
           disableExtraction: true, 
         },
       ],
