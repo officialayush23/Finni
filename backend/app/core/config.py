@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "SmartFinance AI"
     API_V1_STR: str = "/api/v1"
     DEBUG: bool = True
+    ENABLE_HEAVY_ML: bool = False 
     
     # --- Security & Auth ---
     # We map SECRET_KEY to SUPABASE_JWT_SECRET because that is what signs your tokens
