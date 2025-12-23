@@ -35,7 +35,7 @@ node_modules
 .vercel
 .tamagui
 .idea
-
+dist/
 .env
 # local env files
 .env.local
