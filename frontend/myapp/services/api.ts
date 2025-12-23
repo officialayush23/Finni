@@ -225,7 +225,7 @@
 import axios from 'axios';
 import { supabase } from '../lib/supabase';
 
-// ⚠️ YOUR CURRENT IP
+//  YOUR CURRENT IP
 const BASE_URL = 'http://10.108.157.195:8000'; 
 
 export const api = axios.create({
