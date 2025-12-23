@@ -10,6 +10,7 @@ module.exports = function (api) {
           components: ['tamagui'],
           config: './tamagui.config.ts',
           logTimings: true,
+          disableExtraction: true,
         },
       ],
       // Required for Reanimated (MUST BE LAST)
