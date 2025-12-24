@@ -150,17 +150,15 @@ class GoalAllocation(Base):
 class RawFinancialEvent(Base):
     __tablename__ = "raw_financial_events"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+    id = Column(UUID(as_uuid=True), primary_key=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
 
-    source = Column(String(30), nullable=False)  # sms | ocr | notification | csv | wallet
+    source = Column(String(30), nullable=False)  # STRING
     sender = Column(String(100))
     raw_text = Column(Text, nullable=False)
 
-    received_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    is_parsed = Column(Boolean, default=False)
-
-    parsed_transaction_id = Column(UUID(as_uuid=True))
+    received_at = Column(DateTime(timezone=True))
+    parsed = Column(Boolean, default=False)  # ✅ FIXED
 
 
 class UserWallet(Base):
