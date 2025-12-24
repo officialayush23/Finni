@@ -204,32 +204,47 @@ export default function RootLayout() {
   if (!loaded) return null;
 
   return (
-    <TamaguiProvider config={config} defaultTheme="dark">
-      <Theme name="dark">
-        
-        {/* 2. WRAP THE STACK IN PORTAL PROVIDER */}
-        <PortalProvider shouldAddRootHost>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="index" />
-            <Stack.Screen 
-              name="income" 
-              options={{ 
-                presentation: 'card',
-                animation: 'slide_from_right'
-              }} 
-            />
-            <Stack.Screen 
-              name="profile" 
-              options={{ 
-                presentation: 'modal',
-                animation: 'slide_from_bottom' 
-              }} 
-            />
-          </Stack>
-        </PortalProvider>
+  <TamaguiProvider config={config} defaultTheme="dark">
+    {/* 🚀 Move Theme inside TamaguiProvider but outside PortalProvider */}
+    <Theme name="dark">
+      <PortalProvider shouldAddRootHost>
+        <Stack screenOptions={{ headerShown: false }}>
+           <Stack.Screen name="index" />
+           <Stack.Screen name="(tabs)" />
+           {/* ... rest of your screens ... */}
+        </Stack>
+      </PortalProvider>
+    </Theme>
+  </TamaguiProvider>
+);
 
-      </Theme>
-    </TamaguiProvider>
-  );
+  // return (
+  //   <TamaguiProvider config={config} defaultTheme="dark">
+  //     <Theme name="dark">
+        
+  //       {/* 2. WRAP THE STACK IN PORTAL PROVIDER */}
+  //       <PortalProvider shouldAddRootHost>
+  //         <Stack screenOptions={{ headerShown: false }}>
+  //           <Stack.Screen name="(tabs)" />
+  //           <Stack.Screen name="index" />
+  //           <Stack.Screen 
+  //             name="income" 
+  //             options={{ 
+  //               presentation: 'card',
+  //               animation: 'slide_from_right'
+  //             }} 
+  //           />
+  //           <Stack.Screen 
+  //             name="profile" 
+  //             options={{ 
+  //               presentation: 'modal',
+  //               animation: 'slide_from_bottom' 
+  //             }} 
+  //           />
+  //         </Stack>
+  //       </PortalProvider>
+
+  //     </Theme>
+  //   </TamaguiProvider>
+  // );
 }
