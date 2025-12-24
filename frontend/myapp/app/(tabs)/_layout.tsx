@@ -201,3 +201,18 @@
 //     borderColor: 'rgba(255,255,255,0.12)',
 //   },
 // });
+
+
+
+import { Stack } from 'expo-router';
+import { Theme } from 'tamagui';
+
+export default function TabLayout() {
+  // This satisfies Expo Router's need for a component 
+  // but displays NO bottom bar and NO header.
+  return (
+    <Theme name="dark">
+      <Stack screenOptions={{ headerShown: false }} />
+    </Theme>
+  );
+}
