@@ -61,6 +61,7 @@ class RateTypeEnum(str, enum.Enum):
     market_linked = "market_linked"
     api_driven = "api_driven"
 
+
 # =========================
 # 1. Users & Wallets
 # =========================
@@ -76,20 +77,15 @@ class User(Base):
     metadata_ = Column("metadata", JSONB, default=dict)
 
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(
-        DateTime(timezone=True),
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
-    )
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    wallets = relationship("UserWallet", back_populates="user", cascade="all, delete-orphan")
+    wallets = relationship("UserWallet", back_populates="user")
     transactions = relationship("Transaction", back_populates="user")
     income_sources = relationship("IncomeSource", back_populates="user")
     portfolio = relationship("PortfolioHolding", back_populates="user")
     goals = relationship("FinancialGoal", back_populates="user")
     budgets = relationship("Budget", back_populates="user")
     chat_sessions = relationship("ChatSession", back_populates="user")
-
 
 class FinancialGoal(Base):
     __tablename__ = "financial_goals"
@@ -150,15 +146,16 @@ class GoalAllocation(Base):
 class RawFinancialEvent(Base):
     __tablename__ = "raw_financial_events"
 
-    id = Column(UUID(as_uuid=True), primary_key=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
 
-    source = Column(String(30), nullable=False)  # STRING
+    source = Column(String(30), nullable=False)
     sender = Column(String(100))
     raw_text = Column(Text, nullable=False)
 
-    received_at = Column(DateTime(timezone=True))
-    parsed = Column(Boolean, default=False)  # ✅ FIXED
+    received_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    parsed = Column(Boolean, default=False)
+
 
 
 class UserWallet(Base):
@@ -261,14 +258,14 @@ class Transaction(Base):
         nullable=False,
     )
 
-    raw_event_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("raw_financial_events.id"),
-        nullable=True,
-    )
+    raw_event_id = Column(UUID(as_uuid=True), ForeignKey("raw_financial_events.id"))
+    anomaly_score = Column(Numeric(6, 4), default=0)
+    blockchain_hash = Column(String(66))
 
     description = Column(Text)
+
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="transactions")
     merchant = relationship("MerchantMaster", back_populates="transactions")
@@ -357,7 +354,7 @@ class Budget(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
 
-    name = Column(String(255), nullable=False)
+    name = Column(Text, nullable=False)
     limit_amount = Column(Numeric(18, 2), nullable=False)
     period = Column(String(20), default="monthly")
     alert_threshold = Column(Numeric(5, 2), default=80)
@@ -370,7 +367,9 @@ class Budget(Base):
 
     user = relationship("User", back_populates="budgets")
 
-
+    __table_args__ = (
+        UniqueConstraint("user_id", "name", name="uq_user_budget_name"),
+    )
 # =========================
 # 6. AI Chat
 # =========================
