@@ -97,6 +97,7 @@ const darkAiTokens = createTokens({
 
 export const config = createTamagui({
   ...configBase,
+  disableExtraction: true,
   tokens: darkAiTokens,
   themes: {
     ...configBase.themes,

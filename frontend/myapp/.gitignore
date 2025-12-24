@@ -30,12 +30,12 @@ node_modules
 **/_
 **/tests/spec/out
 .DS_Store
-
+.tamagui/
 .next
 .vercel
 .tamagui
 .idea
-
+dist/
 .env
 # local env files
 .env.local
