@@ -3,7 +3,14 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.orm import declarative_base
 from app.core.config import settings
 
-engine = create_async_engine(settings.ASYNC_DATABASE_URL, echo=False, future=True)
+# UPDATED: added connect_args to disable prepared statements for Supabase Transaction Pooler (port 6543)
+engine = create_async_engine(
+    settings.ASYNC_DATABASE_URL, 
+    echo=False, 
+    future=True,
+    connect_args={"prepare_threshold": None}
+)
+
 AsyncSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False, autoflush=False)
 Base = declarative_base()
 
