@@ -229,3 +229,14 @@ async def explain_dashboard_api(
     explanation = await explain_dashboard(context)
 
     return {"summary": explanation}
+
+
+@router.get("/score")
+async def finance_score(
+    db: AsyncSession = Depends(get_db),
+    auth: AuthUser = Depends(get_current_user),
+):
+    from app.services.finance_score import compute_finance_score
+    return {
+        "score": await compute_finance_score(db, auth.user_id)
+    }
