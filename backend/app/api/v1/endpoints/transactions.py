@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+# app/api/v1/endpoints/transactions.py
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import date
@@ -6,8 +7,13 @@ from datetime import date
 from app.core.database import get_db
 from app.api.deps.auth import get_current_user, AuthUser
 from app.models.all_models import Transaction, TxnSourceEnum
-from app.schemas.schemas import TransactionCreate, TransactionResponse
+from app.schemas.schemas import (
+    TransactionCreate,
+    TransactionUpdate,
+    TransactionResponse,
+)
 from app.services.transaction_service import handle_budget_checks
+from app.utils.api_errors import api_error
 
 router = APIRouter()
 
@@ -18,33 +24,28 @@ async def create_transaction(
     db: AsyncSession = Depends(get_db),
     auth: AuthUser = Depends(get_current_user),
 ):
-    txn = Transaction(
-        user_id=auth.user_id,
-        amount=payload.amount,
-        currency=payload.currency,
-        occurred_at=payload.occurred_at,
-        category_id=payload.category_id,
-        merchant_raw=payload.merchant_raw,
-        description=payload.description,
-        source=TxnSourceEnum(payload.source),  # ✅ string → enum
-    )
+    try:
+        txn = Transaction(
+            user_id=auth.user_id,
+            amount=payload.amount,
+            currency=payload.currency,
+            occurred_at=payload.occurred_at,
+            category_id=payload.category_id,
+            merchant_raw=payload.merchant_raw,
+            description=payload.description,
+            source=TxnSourceEnum(payload.source),
+        )
 
-    db.add(txn)
-    await db.commit()
-    await db.refresh(txn)
+        db.add(txn)
+        await db.commit()
+        await db.refresh(txn)
 
-    await handle_budget_checks(db, txn)
+        await handle_budget_checks(db, txn)
 
-    return TransactionResponse(
-        id=str(txn.id),
-        amount=txn.amount,
-        currency=txn.currency,
-        occurred_at=txn.occurred_at,
-        category_id=str(txn.category_id) if txn.category_id else None,
-        merchant_raw=txn.merchant_raw,
-        description=txn.description,
-        source=txn.source.value,  # ✅ enum → string
-    )
+        return TransactionResponse.from_orm(txn)
+
+    except Exception as e:
+        raise api_error("TXN_CREATE_FAILED", str(e))
 
 
 @router.get("/", response_model=list[TransactionResponse])
@@ -62,27 +63,13 @@ async def list_transactions(
         stmt = stmt.where(Transaction.occurred_at <= end_date)
 
     result = await db.execute(stmt.order_by(Transaction.occurred_at.desc()))
-    txns = result.scalars().all()
-
-    return [
-        TransactionResponse(
-            id=str(t.id),
-            amount=t.amount,
-            currency=t.currency,
-            occurred_at=t.occurred_at,
-            category_id=str(t.category_id) if t.category_id else None,
-            merchant_raw=t.merchant_raw,
-            description=t.description,
-            source=t.source.value,  # ✅ FIX
-        )
-        for t in txns
-    ]
+    return result.scalars().all()
 
 
 @router.patch("/{txn_id}", response_model=TransactionResponse)
 async def update_transaction(
     txn_id: str,
-    payload: TransactionCreate,
+    payload: TransactionUpdate,
     db: AsyncSession = Depends(get_db),
     auth: AuthUser = Depends(get_current_user),
 ):
@@ -95,24 +82,14 @@ async def update_transaction(
     txn = result.scalar_one_or_none()
 
     if not txn:
-        raise HTTPException(status_code=404, detail="Transaction not found")
+        raise api_error("TXN_NOT_FOUND", "Transaction not found", 404)
 
     for field, value in payload.model_dump(exclude_unset=True).items():
         if field == "source":
-            setattr(txn, field, TxnSourceEnum(value))  # ✅ FIX
-        else:
-            setattr(txn, field, value)
+            value = TxnSourceEnum(value)
+        setattr(txn, field, value)
 
     await db.commit()
     await db.refresh(txn)
 
-    return TransactionResponse(
-        id=str(txn.id),
-        amount=txn.amount,
-        currency=txn.currency,
-        occurred_at=txn.occurred_at,
-        category_id=str(txn.category_id) if txn.category_id else None,
-        merchant_raw=txn.merchant_raw,
-        description=txn.description,
-        source=txn.source.value,  # ✅ FIX
-    )
+    return TransactionResponse.from_orm(txn)

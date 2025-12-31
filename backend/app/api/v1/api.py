@@ -12,6 +12,7 @@ from app.api.v1.endpoints import (
     ingest,
     transactions,
     goals,
+    dashboard,
 
 
 
@@ -32,6 +33,7 @@ api_router.include_router(
     prefix="/transactions",
     tags=["Transactions"],
 )
+api_router.include_router(dashboard.router)
 
 
 # websocket has no prefix

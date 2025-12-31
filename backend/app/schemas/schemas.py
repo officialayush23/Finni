@@ -208,6 +208,14 @@ class TransactionResponse(BaseModel):
     source: str
 
 
+class TransactionUpdate(BaseModel):
+    amount: Optional[float] = None
+    currency: Optional[str] = None
+    occurred_at: Optional[datetime] = None
+    category_id: Optional[UUID] = None
+    merchant_raw: Optional[str] = None
+    description: Optional[str] = None
+    source: Optional[str] = None
 
 
 class IncomeOnboarding(BaseModel):
@@ -291,7 +299,16 @@ class GoalAllocationCreate(BaseModel):
     portfolio_holding_id: Optional[UUID] = None
     allocation_percentage: Optional[float] = None
     allocation_fixed_amount: Optional[float] = None
+    allocation_type: str = "capital"  # capital | expected_return
 
+class GoalOptimizationPlan(BaseModel):
+    plan_id: str
+    feasibility_score: float   # 0–1
+    time_to_goal_months: int
+    allocations: list[dict]
+    tradeoffs: list[str]
+    risks: list[str]
+    recommendation: str
 
 class GoalResponse(BaseModel):
     id: str

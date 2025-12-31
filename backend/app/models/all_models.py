@@ -138,9 +138,14 @@ class GoalAllocation(Base):
     allocation_percentage = Column(Numeric(5, 2))
     allocation_fixed_amount = Column(Numeric(18, 2))
 
+    # 🔑 CRITICAL
+    allocation_type = Column(String(20), default="capital")  
+    # capital | expected_return
+
     goal = relationship("FinancialGoal", back_populates="allocations")
     income_source = relationship("IncomeSource", back_populates="allocations")
     portfolio_holding = relationship("PortfolioHolding", back_populates="allocations")
+
 
 
 class RawFinancialEvent(Base):

@@ -1,6 +1,6 @@
 # app/api/v1/endpoints/investments.py
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends,HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.api.deps.auth import get_current_user, AuthUser
@@ -131,3 +131,31 @@ async def refresh_investment(
     return {"status": "refreshed", "current_value": holding.current_value}
  
 
+@router.get("/overview")
+async def investment_overview(
+    db: AsyncSession = Depends(get_db),
+    auth: AuthUser = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(PortfolioHolding)
+        .where(PortfolioHolding.user_id == auth.user_id)
+    )
+    holdings = result.scalars().all()
+
+    response = []
+    for h in holdings:
+        monthly = project_monthly_return(
+            float(h.current_value or 0),
+            h.metadata_.get("expected_annual_return"),
+        )
+
+        response.append({
+            "id": str(h.id),
+            "name": h.name,
+            "asset_type": h.asset_type.value,
+            "current_value": float(h.current_value or 0),
+            "expected_monthly_return": monthly,
+            "last_api_fetch": h.last_api_fetch,
+        })
+
+    return response

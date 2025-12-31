@@ -1,3 +1,4 @@
+# app/api/v1/endpoints/ingest.py
 from fastapi import APIRouter, Depends, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
@@ -10,10 +11,9 @@ from app.services.ingest_service import process_raw_event
 
 router = APIRouter()
 
-
 @router.post("/{source}")
 async def ingest_event(
-    source: TxnSourceEnum,
+    source: str,  # NOT enum
     raw_text: str,
     sender: str | None = None,
     db: AsyncSession = Depends(get_db),
@@ -21,7 +21,7 @@ async def ingest_event(
 ):
     raw = RawFinancialEvent(
         user_id=auth.user_id,
-        source=source.value,   # ✅ store string
+        source=source,   # free-form ingest channel
         sender=sender,
         raw_text=raw_text,
         received_at=datetime.utcnow(),
@@ -33,7 +33,10 @@ async def ingest_event(
 
     await process_raw_event(db, raw)
 
-    return {"status": "accepted", "raw_event_id": str(raw.id)}
+    return {
+        "status": "accepted",
+        "raw_event_id": str(raw.id),
+    }
 
 
 @router.post("/ocr")
@@ -47,7 +50,7 @@ async def ingest_ocr(
 
     raw = RawFinancialEvent(
         user_id=auth.user_id,
-        source=TxnSourceEnum.ocr.value,
+        source="ocr",
         raw_text=text,
     )
 

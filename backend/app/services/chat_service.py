@@ -10,7 +10,7 @@ from app.models.all_models import (
 from app.core.config import settings
 import uuid
 from typing import Optional
-
+from app.services.ai_guardrails import require_confirmation
 from app.services.chat_memory import embed_chat_message
 from app.services.websocket_manager import manager
 from app.services.ai.budget_action import detect_budget_action
@@ -97,6 +97,12 @@ class ChatService:
 
         # 🔹 STEP 1: Detect action FIRST
         action = await detect_budget_action(message, txn_context)
+        if require_confirmation(action):
+            return (
+                f"I think you want to **{action.action.value.replace('_', ' ')}**, "
+                "but I need your confirmation. Please say **confirm**.",
+                str(session_uuid),
+            )
 
         if action.action == "create_budget":
             budget = await create_budget_from_ai(
