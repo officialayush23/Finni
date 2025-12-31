@@ -10,7 +10,8 @@ from app.api.deps.auth import get_current_user, AuthUser
 from app.models.all_models import (
     Transaction,
     IncomeSource,
-    PortfolioHolding,
+    PortfolioHolding, FinancialGoal,    Budget
+
 )
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
@@ -79,7 +80,8 @@ async def dashboard_goals(
 
     for goal in goals:
         current = await calculate_goal_progress(db, goal)
-        feasibility = await compute_goal_feasibility(db, goal)
+        feasibility = await compute_goal_feasibility(goal)
+
 
         remaining = float(goal.target_amount) - current
         progress_pct = (
@@ -236,7 +238,7 @@ async def finance_score(
     db: AsyncSession = Depends(get_db),
     auth: AuthUser = Depends(get_current_user),
 ):
-    from app.services.finance_score import compute_finance_score
+    from app.services.finance_service import compute_finance_score
     return {
         "score": await compute_finance_score(db, auth.user_id)
     }

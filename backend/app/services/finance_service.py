@@ -7,51 +7,25 @@ from sqlalchemy import select
 from app.models.all_models import Budget, FinancialGoal, IncomeSource
 
 
-async def compute_finance_score(db: AsyncSession, user_id):
-    score = 0
+async def compute_goal_feasibility(goal: FinancialGoal):
+    guaranteed = 0.0
+    advisory = 0.0
 
-    # 1️⃣ Budget Discipline
-    budgets = (
-        await db.execute(
-            select(Budget).where(Budget.user_id == user_id)
-        )
-    ).scalars().all()
+    for alloc in goal.allocations:
+        if alloc.income_source and alloc.allocation_percentage:
+            guaranteed += (
+                float(alloc.income_source.estimated_monthly_amount)
+                * float(alloc.allocation_percentage)
+                / 100
+            )
 
-    if budgets:
-        score += 25
-    else:
-        score += 10
+        if alloc.portfolio_holding:
+            if alloc.allocation_type == "capital":
+                guaranteed += float(alloc.allocation_fixed_amount or 0)
+            else:
+                advisory += float(alloc.portfolio_holding.current_value or 0) * 0.01
 
-    # 2️⃣ Savings Rate
-    incomes = (
-        await db.execute(
-            select(IncomeSource).where(IncomeSource.user_id == user_id)
-        )
-    ).scalars().all()
-
-    monthly_income = sum(
-        float(i.estimated_monthly_amount or 0) for i in incomes
-    )
-
-    if monthly_income > 0:
-        score += 20
-    else:
-        score += 5
-
-    # 3️⃣ Goal Progress
-    goals = (
-        await db.execute(
-            select(FinancialGoal).where(FinancialGoal.user_id == user_id)
-        )
-    ).scalars().all()
-
-    if goals:
-        score += 20
-    else:
-        score += 10
-
-    # 4️⃣ Risk Health
-    risk = await assess_user_risk(db, user_id)
-    score += max(0, 25 - risk["overall_risk"] / 4)
-
-    return round(min(score, 100), 2)
+    return {
+        "guaranteed": round(guaranteed, 2),
+        "advisory": round(advisory, 2),
+    }

@@ -9,7 +9,7 @@ from app.models.all_models import FinancialGoal, GoalAllocation
 from app.schemas.schemas import GoalCreate, GoalAllocationCreate, GoalResponse
 from app.services.goal_service import calculate_goal_progress
 from app.services.allocation_validator import validate_portfolio_allocation
-
+from app.services.goal_optimizer import optimize_goal
 router = APIRouter()
 
 @router.post("/", response_model=GoalResponse)
