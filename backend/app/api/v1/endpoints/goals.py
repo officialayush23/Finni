@@ -92,6 +92,12 @@ async def allocate_goal(
 
     if not goal or goal.user_id != auth.user_id:
         raise HTTPException(status_code=404, detail="Goal not found")
+    
+    if not payload.income_source_id and not payload.portfolio_holding_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Either income_source_id or portfolio_holding_id is required",
+        )
 
     alloc = GoalAllocation(
         goal_id=goal.id,
