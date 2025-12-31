@@ -80,7 +80,7 @@ async def dashboard_goals(
 
     for goal in goals:
         current = await calculate_goal_progress(db, goal)
-        feasibility = await compute_goal_feasibility(goal)
+        feasibility = await compute_goal_feasibility(db,goal.id)
 
 
         remaining = float(goal.target_amount) - current

@@ -6,6 +6,7 @@ from app.models.all_models import (
     PortfolioHolding,
 )
 import uuid
+from sqlalchemy import select
 
 
 async def optimize_goal(

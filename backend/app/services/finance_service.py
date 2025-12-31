@@ -1,31 +1,65 @@
 # app/services/finance_service.py
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.services.risk_engine import assess_user_risk
-from app.services.goal_service import calculate_goal_progress
-from sqlalchemy import select
-from app.models.all_models import Budget, FinancialGoal, IncomeSource
+from sqlalchemy import select, func
+from app.models.all_models import (
+    Transaction,
+    Budget,
+    IncomeSource,
+    PortfolioHolding,
+    FinancialGoal,
+)
 
+async def compute_finance_score(
+    db: AsyncSession,
+    user_id,
+) -> int:
+    """
+    Produces a 0–100 finance health score.
+    Deterministic, explainable, NO AI.
+    """
 
-async def compute_goal_feasibility(goal: FinancialGoal):
-    guaranteed = 0.0
-    advisory = 0.0
+    # Income
+    income_q = await db.execute(
+        select(func.coalesce(func.sum(IncomeSource.estimated_monthly_amount), 0))
+        .where(IncomeSource.user_id == user_id)
+        .where(IncomeSource.is_active == True)
+    )
+    income = float(income_q.scalar())
 
-    for alloc in goal.allocations:
-        if alloc.income_source and alloc.allocation_percentage:
-            guaranteed += (
-                float(alloc.income_source.estimated_monthly_amount)
-                * float(alloc.allocation_percentage)
-                / 100
-            )
+    # Expenses (last 30 days)
+    expense_q = await db.execute(
+        select(func.coalesce(func.sum(Transaction.amount), 0))
+        .where(Transaction.user_id == user_id)
+    )
+    expenses = float(expense_q.scalar())
 
-        if alloc.portfolio_holding:
-            if alloc.allocation_type == "capital":
-                guaranteed += float(alloc.allocation_fixed_amount or 0)
-            else:
-                advisory += float(alloc.portfolio_holding.current_value or 0) * 0.01
+    # Budgets
+    budget_q = await db.execute(
+        select(func.count(Budget.id))
+        .where(Budget.user_id == user_id)
+        .where(Budget.is_active == True)
+    )
+    budget_count = budget_q.scalar()
 
-    return {
-        "guaranteed": round(guaranteed, 2),
-        "advisory": round(advisory, 2),
-    }
+    # Investments
+    invest_q = await db.execute(
+        select(func.coalesce(func.sum(PortfolioHolding.current_value), 0))
+        .where(PortfolioHolding.user_id == user_id)
+    )
+    investments = float(invest_q.scalar())
+
+    score = 50
+
+    if income > expenses:
+        score += 15
+    else:
+        score -= 10
+
+    if budget_count > 0:
+        score += 10
+
+    if investments > income * 6:
+        score += 15
+
+    return max(0, min(100, score))
