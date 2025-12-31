@@ -57,7 +57,16 @@ async def list_goals(
 
     response = []
     for g in goals:
-        current = await calculate_goal_progress(db, g)
+        try:
+            if not g.allocations:
+                current = 0
+            else:
+                current = await calculate_goal_progress(db, g)
+        except Exception as e:
+            # Log internal error
+            print(f"[GOAL_PROGRESS_ERROR] goal_id={g.id} error={repr(e)}")
+            current = 0
+
         response.append(
             GoalResponse(
                 id=str(g.id),
