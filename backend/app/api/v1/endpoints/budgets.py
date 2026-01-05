@@ -9,6 +9,9 @@ from app.api.deps.auth import get_current_user, AuthUser
 from app.models.all_models import Budget
 from app.schemas.schemas import BudgetCreate, BudgetResponse, BudgetUpdate
 from app.services.budget_engine import calculate_budget_spent
+from app.services.conflict_detector import validate_budget_creation, create_conflict_record
+from app.utils.api_errors import api_error
+from datetime import date
 
 router = APIRouter()
 
@@ -51,34 +54,63 @@ async def create_budget(
     db: AsyncSession = Depends(get_db),
     auth: AuthUser = Depends(get_current_user),
 ):
-    budget = Budget(
-        user_id=auth.user_id,
-        name=payload.name,
-        limit_amount=payload.limit_amount,
-        period=payload.period,
-        alert_threshold=payload.alert_threshold,
-        metadata_={
-            "included_category_ids": payload.included_category_ids,
-            "excluded_category_ids": payload.excluded_category_ids,
-            "excluded_merchants": payload.excluded_merchants,
-        },
-    )
+    try:
+        # Validate for conflicts
+        is_valid, conflicts = await validate_budget_creation(
+            db, auth.user_id, payload.limit_amount
+        )
+        
+        if not is_valid:
+            # Log conflicts
+            for conflict in conflicts:
+                await create_conflict_record(
+                    db,
+                    auth.user_id,
+                    conflict["type"],
+                    conflict["details"],
+                    month=date.today().replace(day=1),
+                )
+            # Return conflict error (could be made non-blocking)
+            conflict_messages = [c.get("message", "") for c in conflicts]
+            api_error(
+                "BUDGET_CONFLICT",
+                f"Budget creation conflicts detected: {'; '.join(conflict_messages)}",
+                status=409,  # Conflict
+                details={"conflicts": conflicts},
+            )
 
-    db.add(budget)
-    await db.commit()
-    await db.refresh(budget)
+        budget = Budget(
+            user_id=auth.user_id,
+            name=payload.name,
+            limit_amount=payload.limit_amount,
+            period=payload.period,
+            alert_threshold=payload.alert_threshold,
+            metadata_={
+                "included_category_ids": payload.included_category_ids or [],
+                "excluded_category_ids": payload.excluded_category_ids or [],
+                "excluded_merchants": payload.excluded_merchants or [],
+            },
+        )
 
-    return BudgetResponse(
-        id=str(budget.id),
-        name=budget.name,
-        limit_amount=budget.limit_amount,
-        period=budget.period,
-        alert_threshold=budget.alert_threshold,
-        is_active=True,
-        spent=0,
-        remaining=budget.limit_amount,
-        percentage_used=0,
-    )
+        db.add(budget)
+        await db.commit()
+        await db.refresh(budget)
+
+        return BudgetResponse(
+            id=str(budget.id),
+            name=budget.name,
+            limit_amount=budget.limit_amount,
+            period=budget.period,
+            alert_threshold=budget.alert_threshold,
+            is_active=True,
+            spent=0,
+            remaining=budget.limit_amount,
+            percentage_used=0,
+        )
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise
+        api_error("BUDGET_CREATE_FAILED", str(e), status=500)
 
 
 @router.patch("/{budget_id}")
@@ -90,17 +122,20 @@ async def update_budget(
 ):
     budget = await db.get(Budget, budget_id)
     if not budget or budget.user_id != auth.user_id:
-        raise HTTPException(404, "Budget not found")
+        api_error("BUDGET_NOT_FOUND", "Budget not found", status=404)
 
-    if budget.metadata_ is None:
-        budget.metadata_ = {}
+    try:
+        if budget.metadata_ is None:
+            budget.metadata_ = {}
 
-    data = payload.model_dump(exclude_unset=True)
-    for k, v in data.items():
-        if k in ["included_category_ids", "excluded_category_ids", "excluded_merchants"]:
-            budget.metadata_[k] = v
-        else:
-            setattr(budget, k, v)
+        data = payload.model_dump(exclude_unset=True)
+        for k, v in data.items():
+            if k in ["included_category_ids", "excluded_category_ids", "excluded_merchants"]:
+                budget.metadata_[k] = v
+            else:
+                setattr(budget, k, v)
 
-    await db.commit()
-    return {"status": "updated"}
+        await db.commit()
+        return {"status": "updated"}
+    except Exception as e:
+        api_error("BUDGET_UPDATE_FAILED", str(e), status=500)

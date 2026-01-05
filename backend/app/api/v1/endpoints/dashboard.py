@@ -70,6 +70,7 @@ async def dashboard_goals(
 ):
     from app.services.goal_service import calculate_goal_progress
     from app.services.goal_feasibility import compute_goal_feasibility
+    from app.services.goal_optimizer import optimize_goal
 
     result = await db.execute(
         select(FinancialGoal).where(FinancialGoal.user_id == auth.user_id)
@@ -78,10 +79,23 @@ async def dashboard_goals(
 
     response = []
 
+    # Get user's risk profile for optimization
+    risk_profile = auth.preferences.get("risk_profile", "moderate") if hasattr(auth, "preferences") else "moderate"
+
     for goal in goals:
         current = await calculate_goal_progress(db, goal)
-        feasibility = await compute_goal_feasibility(db,goal.id)
+        feasibility = await compute_goal_feasibility(db, goal.id)
 
+        # Get optimization results
+        try:
+            optimization = await optimize_goal(
+                db=db,
+                goal=goal,
+                risk_profile=risk_profile,
+            )
+        except Exception as e:
+            # If optimization fails, continue without it
+            optimization = None
 
         remaining = float(goal.target_amount) - current
         progress_pct = (
@@ -90,18 +104,27 @@ async def dashboard_goals(
             else 0
         )
 
-        response.append(
-            {
-                "id": str(goal.id),
-                "name": goal.name,
-                "target_amount": float(goal.target_amount),
-                "current_amount": current,
-                "remaining": max(remaining, 0),
-                "progress_percentage": progress_pct,
-                "feasibility": feasibility,
-                "status": goal.status,
+        goal_data = {
+            "id": str(goal.id),
+            "name": goal.name,
+            "target_amount": float(goal.target_amount),
+            "current_amount": current,
+            "remaining": max(remaining, 0),
+            "progress_percentage": progress_pct,
+            "feasibility": feasibility,
+            "status": goal.status,
+        }
+
+        # Add optimization data if available
+        if optimization:
+            goal_data["optimization"] = {
+                "feasibility_score": optimization.get("feasibility_score"),
+                "time_to_goal_months": optimization.get("time_to_goal_months"),
+                "recommended_plan": optimization.get("recommended_plan"),
+                "alternatives": optimization.get("alternatives", [])[:3],  # Limit to 3
             }
-        )
+
+        response.append(goal_data)
 
     return response
 
