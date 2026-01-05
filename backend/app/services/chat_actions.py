@@ -1,7 +1,5 @@
 # app/services/chat_actions.py
 
-# app/services/chat_actions.py
-
 import re
 from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
