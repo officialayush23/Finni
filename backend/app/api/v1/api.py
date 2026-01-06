@@ -13,6 +13,7 @@ from app.api.v1.endpoints import (
     transactions,
     goals,
     dashboard,
+    dev_auth
 
 
 
@@ -34,6 +35,7 @@ api_router.include_router(
     tags=["Transactions"],
 )
 api_router.include_router(dashboard.router)
+api_router.include_router(dev_auth.router)
 
 
 # websocket has no prefix

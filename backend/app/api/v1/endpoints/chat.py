@@ -21,6 +21,7 @@ async def chat_with_advisor(
         user_id=auth.user_id,
         message=req.message,
         session_id=req.session_id,
+       
     )
 
     return ChatResponse(response=response, session_id=session_id)

@@ -2,7 +2,11 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from app.core.config import settings
+from app.core.database import get_db
+from app.models.all_models import User
 import uuid
 
 security = HTTPBearer(auto_error=False)
@@ -12,8 +16,10 @@ class AuthUser:
         self.user_id = user_id
         self.email = email
 
-def get_current_user(
+
+async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db),
 ) -> AuthUser:
     if credentials is None:
         raise HTTPException(
@@ -22,6 +28,7 @@ def get_current_user(
         )
 
     token = credentials.credentials
+
     try:
         payload = jwt.decode(
             token,
@@ -36,11 +43,31 @@ def get_current_user(
             detail="Invalid or expired token",
         )
 
-    user_id = payload.get("sub")
-    if not user_id:
+    sub = payload.get("sub")
+    email = payload.get("email")
+
+    if not sub or not email:
         raise HTTPException(status_code=401, detail="Invalid token payload")
 
+    # 🔑 FIX: lookup by EMAIL, not ID
+    result = await db.execute(
+        select(User).where(User.email == email)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        # Create user only if email does not exist
+        user = User(
+            id=uuid.UUID(sub),
+            email=email,
+            preferences={},
+            metadata_={},
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
     return AuthUser(
-        user_id=uuid.UUID(user_id),
-        email=payload.get("email"),
+        user_id=user.id,   # <- IMPORTANT: use DB id
+        email=user.email,
     )

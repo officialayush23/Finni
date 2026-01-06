@@ -18,7 +18,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY, UUID
 from pgvector.sqlalchemy import Vector
-
+from sqlalchemy import Column, String, JSON, DateTime, ForeignKey
 from app.core.database import Base
 
 
@@ -446,3 +446,13 @@ class WalletTransaction(Base):
     __table_args__ = (
         UniqueConstraint("chain", "tx_hash", name="uq_chain_hash"),
     )
+
+class PendingAIAction(Base):
+    __tablename__ = "pending_ai_actions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+    action_type = Column(String(50), nullable=False)
+    payload = Column(JSON, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)

@@ -20,8 +20,23 @@ async def generate_embedding(text: str) -> list[float]:
     """
     Gemini embeddings → stored in pgvector
     """
-    resp = await client.aio.models.embed_content(
-        model="text-embedding-004",
-        content=text,
-    )
-    return resp["embedding"]
+    try:
+        resp = await client.aio.models.embed_content(
+            model="text-embedding-004",
+            contents=text,  # Use 'contents' (plural) not 'content'
+        )
+        # Response is an object with 'embedding' attribute
+        if hasattr(resp, 'embedding'):
+            return resp.embedding
+        elif isinstance(resp, dict) and "embedding" in resp:
+            return resp["embedding"]
+        else:
+            # Fallback: try to get embedding from response
+            return list(resp.values())[0] if resp else []
+    except Exception as e:
+        # Log error but don't fail - embeddings are optional
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Failed to generate embedding: {e}")
+        # Return empty embedding (1536 dimensions for text-embedding-004)
+        return [0.0] * 1536

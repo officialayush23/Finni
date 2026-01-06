@@ -10,6 +10,9 @@ from app.schemas.schemas import GoalCreate, GoalAllocationCreate, GoalResponse
 from app.services.goal_service import calculate_goal_progress
 from app.services.allocation_validator import validate_portfolio_allocation
 from app.services.goal_optimizer import optimize_goal
+from app.services.conflict_detector import validate_goal_allocation, create_conflict_record
+from app.utils.api_errors import api_error
+
 router = APIRouter()
 
 @router.post("/", response_model=GoalResponse)
@@ -75,36 +78,73 @@ async def allocate_goal(
     goal = await db.get(FinancialGoal, goal_id)
 
     if not goal or goal.user_id != auth.user_id:
-        raise HTTPException(status_code=404, detail="Goal not found")
+        api_error("GOAL_NOT_FOUND", "Goal not found", status=404)
 
     if not payload.income_source_id and not payload.portfolio_holding_id:
-        raise HTTPException(
-            status_code=400,
-            detail="income_source_id or portfolio_holding_id required",
+        api_error(
+            "ALLOCATION_INVALID",
+            "income_source_id or portfolio_holding_id required",
+            status=400,
         )
 
-    if payload.portfolio_holding_id:
-        await validate_portfolio_allocation(
+    try:
+        # Validate portfolio allocation if applicable
+        if payload.portfolio_holding_id:
+            await validate_portfolio_allocation(
+                db,
+                payload.portfolio_holding_id,
+                payload.allocation_percentage,
+                payload.allocation_fixed_amount,
+                exclude_goal_id=goal.id,
+            )
+
+        # Validate for conflicts
+        is_valid, conflicts = await validate_goal_allocation(
             db,
-            payload.portfolio_holding_id,
-            payload.allocation_percentage,
-            payload.allocation_fixed_amount,
-            exclude_goal_id=goal.id,
+            auth.user_id,
+            goal_id,
+            income_source_id=payload.income_source_id,
+            portfolio_holding_id=payload.portfolio_holding_id,
+            allocation_percentage=payload.allocation_percentage,
+            allocation_fixed_amount=payload.allocation_fixed_amount,
         )
 
-    alloc = GoalAllocation(
-        goal_id=goal.id,
-        income_source_id=payload.income_source_id,
-        portfolio_holding_id=payload.portfolio_holding_id,
-        allocation_percentage=payload.allocation_percentage,
-        allocation_fixed_amount=payload.allocation_fixed_amount,
-        allocation_type=payload.allocation_type,
-    )
+        if not is_valid:
+            # Log conflicts
+            for conflict in conflicts:
+                await create_conflict_record(
+                    db,
+                    auth.user_id,
+                    conflict["type"],
+                    conflict["details"],
+                )
+            conflict_messages = [c.get("message", "") for c in conflicts]
+            api_error(
+                "ALLOCATION_CONFLICT",
+                f"Allocation conflicts detected: {'; '.join(conflict_messages)}",
+                status=409,
+                details={"conflicts": conflicts},
+            )
 
-    db.add(alloc)
-    await db.commit()
+        alloc = GoalAllocation(
+            goal_id=goal.id,
+            income_source_id=payload.income_source_id,
+            portfolio_holding_id=payload.portfolio_holding_id,
+            allocation_percentage=payload.allocation_percentage,
+            allocation_fixed_amount=payload.allocation_fixed_amount,
+            allocation_type=payload.allocation_type,
+        )
 
-    return {"status": "allocated"}
+        db.add(alloc)
+        await db.commit()
+
+        return {"status": "allocated"}
+    except ValueError as e:
+        api_error("ALLOCATION_VALIDATION_FAILED", str(e), status=400)
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise
+        api_error("ALLOCATION_FAILED", str(e), status=500)
 
 
 @router.get("/{goal_id}/feasibility")
@@ -117,9 +157,12 @@ async def goal_feasibility(
 
     goal = await db.get(FinancialGoal, goal_id)
     if not goal or goal.user_id != auth.user_id:
-        raise HTTPException(status_code=404, detail="Goal not found")
+        api_error("GOAL_NOT_FOUND", "Goal not found", status=404)
 
-    return await compute_goal_feasibility(db, goal_id)
+    try:
+        return await compute_goal_feasibility(db, goal_id)
+    except Exception as e:
+        api_error("FEASIBILITY_COMPUTE_FAILED", str(e), status=500)
 
 
 @router.get("/{goal_id}/optimize")
@@ -130,10 +173,18 @@ async def optimize_goal_api(
 ):
     goal = await db.get(FinancialGoal, goal_id)
     if not goal or goal.user_id != auth.user_id:
-        raise HTTPException(404)
+        api_error("GOAL_NOT_FOUND", "Goal not found", status=404)
 
-    return await optimize_goal(
-        db=db,
-        goal=goal,
-        risk_profile=auth.preferences.get("risk_profile", "moderate"),
-    )
+    try:
+        risk_profile = (
+            auth.preferences.get("risk_profile", "moderate")
+            if hasattr(auth, "preferences")
+            else "moderate"
+        )
+        return await optimize_goal(
+            db=db,
+            goal=goal,
+            risk_profile=risk_profile,
+        )
+    except Exception as e:
+        api_error("OPTIMIZATION_FAILED", str(e), status=500)
