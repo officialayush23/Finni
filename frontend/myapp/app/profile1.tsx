@@ -588,7 +588,7 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   
   // Form Inputs
-  const [fullName, setFullName] = useState('');
+  const [full_Name, setFullName] = useState('');
   const [phone, setPhone] = useState('');
 
   // --- FETCH DATA ---
@@ -613,7 +613,7 @@ export default function ProfileScreen() {
 
   // --- UPDATE DATA ---
   const handleSave = async () => {
-    if (!fullName) {
+    if (!full_Name) {
       Alert.alert("Validation", "Name is required.");
       return;
     }
@@ -621,7 +621,7 @@ export default function ProfileScreen() {
     try {
       // Sending payload as per API spec
       await UserService.updateProfile({ 
-        full_name: fullName, 
+        full_name: full_Name, 
         phone: phone,
         preferences: profile?.preferences || {} // Pass existing or empty object
       });
@@ -669,10 +669,10 @@ export default function ProfileScreen() {
             <YStack ai="center" mb="$6">
               <YStack w={80} h={80} br={40} bg="$gold3" jc="center" ai="center" mb="$3">
                 <Text fontSize={32} fontWeight="900" color="black">
-                  {fullName?.[0]?.toUpperCase() || "U"}
+                  {full_Name?.[0]?.toUpperCase() || "U"}
                 </Text>
               </YStack>
-              <Text color="white" fontSize={20} fontWeight="bold">{fullName || "User"}</Text>
+              <Text color="white" fontSize={20} fontWeight="bold">{full_Name || "User"}</Text>
               <Text color="$silver4" fontSize={14}>{profile?.email}</Text>
             </YStack>
 
@@ -681,7 +681,7 @@ export default function ProfileScreen() {
               <YStack>
                 <Text color="$silver4" fontSize={11} mb="$2" ml="$1">FULL NAME</Text>
                 <Input 
-                  value={fullName} onChangeText={setFullName}
+                  value={full_Name} onChangeText={setFullName}
                   bg="rgba(255,255,255,0.05)" color="white" borderColor="$silver2"
                 />
               </YStack>

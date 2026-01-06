@@ -204,15 +204,62 @@
 
 
 
-import { Stack } from 'expo-router';
-import { Theme } from 'tamagui';
+// import { Stack } from 'expo-router';
+// import { Theme } from 'tamagui';
+
+// export default function TabLayout() {
+//   // This satisfies Expo Router's need for a component 
+//   // but displays NO bottom bar and NO header.
+//   return (
+//     <Theme name="dark">
+//       <Stack screenOptions={{ headerShown: false }} />
+//     </Theme>
+//   );
+// }
+
+
+// import { Tabs } from 'expo-router';
+// import FloatingNavbar from '../../../components/FloatingNavbar';
+
+// export default function TabLayout() {
+//   return (
+//     <Tabs
+//       tabBar={(props) => <FloatingNavbar {...props} />}
+//       screenOptions={{
+//         headerShown: false,
+//       }}
+//     >
+//       <Tabs.Screen name="index" options={{ title: 'Home' }} />
+//       <Tabs.Screen name="portfolio" options={{ title: 'Wealth' }} />
+//       <Tabs.Screen name="chat" options={{ title: 'Finni' }} />
+//       <Tabs.Screen name="transactions" options={{ title: 'History' }} />
+//       <Tabs.Screen name="profile" options={{ title: 'User' }} />
+//     </Tabs>
+//   );
+// }
+
+
+import { Tabs } from 'expo-router';
+import FloatingNavbar from '../../../components/FloatingNavbar';
 
 export default function TabLayout() {
-  // This satisfies Expo Router's need for a component 
-  // but displays NO bottom bar and NO header.
   return (
-    <Theme name="dark">
-      <Stack screenOptions={{ headerShown: false }} />
-    </Theme>
+    <Tabs
+      tabBar={(props) => <FloatingNavbar {...props} />}
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      {/* Name must match the filename in the (tabs) folder */}
+      <Tabs.Screen name="index" options={{ title: 'Home' }} />
+      <Tabs.Screen name="portfolio" options={{ title: 'Wealth' }} />
+      <Tabs.Screen name="chat" options={{ title: 'Finni' }} />
+      <Tabs.Screen name="transactions" options={{ title: 'History' }} />
+      {/* Note: If you want Profile inside tabs, you should move profile.jsx 
+         into the (tabs) folder. If it stays at the root, the navbar 
+         needs to handle it differently.
+      */}
+      <Tabs.Screen name="Profile" options={{ title: 'User' }} />
+    </Tabs>
   );
 }

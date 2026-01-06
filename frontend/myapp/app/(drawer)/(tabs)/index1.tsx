@@ -793,9 +793,9 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Services & Types
-import { UserService } from '../../services/userService';
-import { AiService } from '../../services/aiService';
-import { UserProfile } from '../../types/api';
+import { UserService } from '../../../services/userService';
+import { AiService } from '../../../services/aiService';
+import { UserProfile } from '../../../types/api';
 
 // 🔑 TAB BAR HEIGHT (Adjust if your tab bar is different)
 const TAB_BAR_HEIGHT = 70;
@@ -934,7 +934,7 @@ export default function Dashboard() {
                 w={BUTTON_WIDTH} h={90} bg="rgba(255,255,255,0.03)"
                 borderColor="rgba(255,255,255,0.1)" bw={1}
                 jc="center" ai="center" flexDirection="column"
-                onPress={() => router.push('/(tabs)/portfolio')}
+                onPress={() => router.push('/portfolio')}
               >
                 <ArrowUpRight size={22} color="$gold3" />
                 <Text color="$silver4" fontSize={11}>Add Asset</Text>
@@ -999,7 +999,7 @@ export default function Dashboard() {
             {/* HOLDINGS PREVIEW */}
             <XStack jc="space-between" ai="center" mb="$3">
               <H4 color="$silver3" fontSize={14} letterSpacing={1}>HOLDINGS</H4>
-              <Text color="$gold3" fontSize={12} onPress={() => router.push('/(tabs)/portfolio')}>View All</Text>
+              <Text color="$gold3" fontSize={12} onPress={() => router.push('/portfolio')}>View All</Text>
             </XStack>
 
             <YStack space="$3">

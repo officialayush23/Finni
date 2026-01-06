@@ -15,7 +15,7 @@ async def detect_budget_action(message: str, transactions: str) -> AIBudgetActio
     )
 
     response = await client.aio.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash",
         contents=prompt,
     )
 

@@ -1,12 +1,13 @@
 {
   "expo": {
-    "name": "expo-router-example",
+    "name": "Finni",
     "slug": "expo-router-example",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
@@ -16,37 +17,44 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.exporouterexample",
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "Allow Finni to use speech recognition for financial commands.",
+        "NSMicrophoneUsageDescription": "Allow Finni to use the microphone to listen to your queries."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.anonymous.exporouterexample"
     },
     "plugins": [
       "expo-router",
       "expo-font",
+      "expo-web-browser",
       [
-        "expo-build-properties",
+        "@react-native-voice/voice",
         {
-          "ios": {
-            "newArchEnabled": true
-          },
-          "android": {
-            "newArchEnabled": true
-          }
+          "microphonePermission": "Allow Finni to access the mic.",
+          "speechRecognitionPermission": "Allow Finni to process your voice."
         }
       ],
-      "expo-web-browser"
+      "@react-native-voice/voice"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d086680f-0546-44ba-ab89-7fef9563009b"
+      }
     }
   }
 }

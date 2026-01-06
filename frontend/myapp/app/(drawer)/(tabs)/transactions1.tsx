@@ -3,8 +3,8 @@ import { FlatList, RefreshControl, Modal } from 'react-native';
 import { YStack, XStack, Text, Button, Input, Theme, Card, H3, Sheet, Spinner } from 'tamagui';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Plus, DollarSign, Calendar, Tag, ArrowDownLeft } from '@tamagui/lucide-icons';
-import { FinanceService } from '../../services/financeService';
-import { Transaction } from '../../types/api';
+import { FinanceService } from '../../../services/financeService';
+import { Transaction } from '../../../types/api';
 
 export default function TransactionsScreen() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
