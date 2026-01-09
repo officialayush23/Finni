@@ -1,98 +1,49 @@
-// // // services/aiService.ts
-// // import api from './api';
-// // import { ChatResponse, AnalysisResponse } from '../types/api';
-
-// // export const AiService = {
-  
-// //   // --- 🤖 AI CHAT ---
-// //   // Connects to: POST /api/v1/chat/
-// //   sendMessage: async (message: string, sessionId?: string): Promise<ChatResponse> => {
-// //     const response = await api.post('/api/v1/chat/', {
-// //       message,
-// //       session_id: sessionId
-// //     });
-// //     return response.data;
-// //   },
-
-// //   // --- 📊 MARKET ANALYSIS ---
-// //   // Connects to: GET /api/v1/analysis/{symbol}
-// //   // Returns: Prophet Price Prediction + FinBERT News Sentiment
-// //   analyzeAsset: async (symbol: string, assetType: string = 'stock'): Promise<AnalysisResponse> => {
-// //     // Example: /api/v1/analysis/AAPL?asset_type=stock
-// //     const response = await api.get(`/api/v1/analysis/${symbol}`, {
-// //       params: { asset_type: assetType }
-// //     });
-// //     return response.data;
-// //   },
-
-// //   // --- 💓 HEALTH CHECK ---
-// //   // Connects to: GET /api/v1/ingest/health
-// //   // Used to show the "AI Core Status" on your dashboard
-// //   checkSystemHealth: async (): Promise<boolean> => {
-// //     try {
-// //       const response = await api.get('/api/v1/ingest/health');
-// //       // If it returns 200 OK, the system is alive
-// //       return response.status === 200;
-// //     } catch (e) {
-// //       return false;
-// //     }
-// //   }
-// // };
-
-
-// import { api } from './api'; // <--- UPDATED IMPORT
-// import { ChatResponse, AnalysisResponse } from '../types/api';
-
-// export const AiService = {
-  
-//   sendMessage: async (message: string, sessionId?: string): Promise<ChatResponse> => {
-//     const response = await api.post('/api/v1/chat/', {
-//       message,
-//       session_id: sessionId
-//     });
-//     return response.data;
-//   },
-
-//   analyzeAsset: async (symbol: string, assetType: string = 'stock'): Promise<AnalysisResponse> => {
-//     const response = await api.get(`/api/v1/analysis/${symbol}`, {
-//       params: { asset_type: assetType }
-//     });
-//     return response.data;
-//   },
-
-//   checkSystemHealth: async (): Promise<boolean> => {
-//     try {
-//       const response = await api.get('/api/v1/ingest/health');
-//       return response.status === 200;
-//     } catch (e) {
-//       return false;
-//     }
-//   }
-// };
-
-
 // services/aiService.ts
-import { api } from './api';
-import { AnalysisResponse } from '../types/api';
+import { ApiService } from './apiService';
 
 export const AiService = {
-  
-  // Check System Status (Keep existing)
+  // Check system health - returns true/false without throwing
   checkSystemHealth: async (): Promise<boolean> => {
     try {
-      await api.get('/'); 
+      // Just do a simple HEAD or GET request to check if API is reachable
+      await ApiService.getDashboardOverview();
       return true;
-    } catch (error) {
+    } catch (error: any) {
+      console.log('System health check failed:', error.message);
       return false;
     }
   },
 
-  //  NEW: Analyze Asset (Prophet + FinBERT)
-  analyzeAsset: async (symbol: string, assetType: string = 'stock'): Promise<AnalysisResponse> => {
-    // Call: GET /api/v1/analysis/{symbol}?asset_type=...
-    const response = await api.get(`/api/v1/analysis/${symbol}`, {
-      params: { asset_type: assetType }
-    });
-    return response.data;
-  }
+  // Explain dashboard
+  explainDashboard: async (query: string) => {
+    try {
+      const response = await ApiService.explainDashboard(query);
+      return response.data;
+    } catch (error: any) {
+      console.error('Explain dashboard error:', error.message);
+      throw error;
+    }
+  },
+
+  // Analyze asset
+  analyzeAsset: async (symbol: string) => {
+    try {
+      const response = await ApiService.analyzeAsset(symbol);
+      return response.data;
+    } catch (error: any) {
+      console.error('Analyze asset error:', error.message);
+      throw error;
+    }
+  },
+
+  // Chat with AI advisor
+  chatWithAdvisor: async (message: string) => {
+    try {
+      const response = await ApiService.chatWithAdvisor(message);
+      return response.data;
+    } catch (error: any) {
+      console.error('Chat error:', error.message);
+      throw error;
+    }
+  },
 };

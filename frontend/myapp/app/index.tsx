@@ -373,7 +373,7 @@ export default function AuthScreen() {
       } else {
         await AuthService.login(email, password)
         // 🚀 This is where the transition happens
-        router.replace('/(tabs)')
+        router.replace('/(drawer)/(tabs)')
       }
     } catch (error: any) {
       Alert.alert('Access Denied', error.message || 'Unknown error')
