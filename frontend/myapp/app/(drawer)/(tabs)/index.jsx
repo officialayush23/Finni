@@ -2673,6 +2673,12 @@ export default function Dashboard() {
                 onPress={() => router.push('/goals')}
                 gradient={['#8a4402ff', '#8a4402ff']}
               />
+              <ActionButton 
+                icon={<Briefcase size={24} color="white"/>} 
+                label="Ingest" 
+                onPress={() => router.push('/ingest')}
+                gradient={['#22c55e', '#16a34a']}
+              />
             </XStack>
 
             {/* ENHANCED FINANCIAL GOALS SECTION */}
