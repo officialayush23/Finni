@@ -61,4 +61,15 @@ export const ApiService = {
   put: (url, data) => api.put(url, data),
   patch: (url, data) => api.patch(url, data),
   delete: (url) => api.delete(url),
+
+  // For CSV uploads specifically
+  uploadCSV: async (formData) => {
+    return axios.post('http://127.0.0.1:8000/api/v1/ingest/csv/', formData, {
+      headers: {
+        'Authorization': `Bearer ${yourToken}`,
+        'Content-Type': 'multipart/form-data',
+      },
+      timeout: 60000,
+    });
+  }
 };
