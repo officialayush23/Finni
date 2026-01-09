@@ -77,17 +77,5 @@ async def update_income(
 
     await db.commit()
 
-    # 🔴 REALTIME EVENT
-    from app.services.websocket_manager import manager
-    await manager.broadcast_to_user(
-        str(auth.user_id),
-        {
-            "type": "income_update",
-            "data": {
-                "income_id": income_id,
-                "estimated_monthly_amount": income.estimated_monthly_amount,
-            },
-        },
-    )
 
     return {"status": "updated"}

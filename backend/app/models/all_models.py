@@ -449,10 +449,40 @@ class WalletTransaction(Base):
 
 class PendingAIAction(Base):
     __tablename__ = "pending_ai_actions"
-
+    """
+    ⚠️ REQUIRES DB TABLE CREATION
+    Used for AI confirmation flow.
+    """
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
     action_type = Column(String(50), nullable=False)
     payload = Column(JSON, nullable=False)
     expires_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class IncomeAllocation(Base):
+    __tablename__ = "income_allocations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    income_source_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("income_sources.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    goal_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("financial_goals.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    percentage = Column(Numeric(5, 2), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+
+    income_source = relationship("IncomeSource")
+    goal = relationship("FinancialGoal")
+
+    __table_args__ = (
+        UniqueConstraint("income_source_id", "goal_id", name="uq_income_goal_alloc"),
+    )

@@ -1,4 +1,4 @@
-# backend/CORE/app/websocket/message_types.py
+# backend/app/websocket/message_types.py
 """
 WebSocket Message Type Standards - Pydantic Schemas
 All WebSocket messages must follow these formats for Person 2/3/4 integration.

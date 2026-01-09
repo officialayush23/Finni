@@ -6,7 +6,7 @@ from datetime import datetime
 from uuid import UUID
 import logging
 
-from app.models.all_models import Transaction, Budget, Category, TxnSourceEnum
+from app.models.all_models import Transaction, Budget, TxnSourceEnum
 from app.services.budget_engine import calculate_budget_spent
 from app.services.budget_alerts import send_budget_alert
 
@@ -16,50 +16,40 @@ logger = logging.getLogger(__name__)
 # -----------------------------
 # MAIN ENTRY POINT (AI / VOICE / CHAT)
 # -----------------------------
-async def create_transaction_from_ai(
+async def create_transaction(
     db: AsyncSession,
+    *,
     user_id: UUID,
     amount: float,
-    occurred_at: datetime | None = None,
-    category_id: UUID | None = None,
+    occurred_at: datetime,
+    source: TxnSourceEnum,
     merchant_raw: str | None = None,
     description: str | None = None,
-    source: str = "chatbot",
+    category_id: UUID | None = None,
 ):
     """
-    Create a transaction from AI/chat/voice input.
-    Includes budget checks and alerts.
+    SINGLE source of truth for transactions.
     """
+    txn = Transaction(
+        user_id=user_id,
+        amount=amount,
+        occurred_at=occurred_at,
+        merchant_raw=merchant_raw,
+        description=description,
+        category_id=category_id,
+        source=source,
+    )
     if amount <= 0:
         raise ValueError("Transaction amount must be positive")
+    db.add(txn)
 
-    try:
-        txn = Transaction(
-            user_id=user_id,
-            amount=amount,
-            occurred_at=occurred_at or datetime.utcnow(),
-            category_id=category_id,
-            merchant_raw=merchant_raw,
-            description=description,
-            source=TxnSourceEnum(source),
-        )
+    # Budget checks BEFORE commit
+    await handle_budget_checks(db, txn)
 
-        db.add(txn)
-        # Don't commit yet - wait for budget checks
-        
-        # 🔑 CRITICAL: budget deduction & alerts (before commit)
-        await handle_budget_checks(db, txn)
-        
-        # Now commit everything together
-        await db.commit()
-        await db.refresh(txn)
+    await db.commit()
+    await db.refresh(txn)
 
-        return txn
-    except Exception as e:
-        await db.rollback()
-        logger.error(f"Failed to create transaction from AI: {e}", exc_info=True)
-        raise
-
+    return txn
 
 # -----------------------------
 # BUDGET HANDLING

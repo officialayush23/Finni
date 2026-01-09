@@ -13,6 +13,10 @@ class IncomeRead(BaseModel):
     estimated_monthly_amount: float
     rate_type: str
     ai_source_identifier: Optional[str] = None
+class BudgetMetadata(BaseModel):
+    included_category_ids: list[str]
+    excluded_category_ids: list[str] = []
+    excluded_merchants: list[str] = []
 
 class InvestmentRead(BaseModel):
     id: str
@@ -153,10 +157,9 @@ class BudgetCreate(BaseModel):
     name: str
     limit_amount: float
     period: str  # daily | weekly | monthly
-    included_category_ids: list[str]
-    excluded_category_ids: list[str] = []
-    excluded_merchants: list[str] = []
+    metadata: BudgetMetadata
     alert_threshold: float = 80
+
 
 
 class BudgetResponse(BaseModel):
@@ -171,15 +174,24 @@ class BudgetResponse(BaseModel):
     percentage_used: float
 
 
-
+class TransactionSource(str, Enum):
+    manual = "manual"
+    voice = "voice"
+    chatbot = "chatbot"
+    csv = "csv"
+    notification = "notification"
+    wallet = "wallet"
+    blockchain = "blockchain"
 class TransactionCreate(BaseModel):
     amount: float
     currency: str = "INR"
     occurred_at: datetime
-    category_id: UUID
+    category_id: Optional[UUID]=None
     merchant_raw: Optional[str] = None
     description: Optional[str] = None
-    source: str = "manual"  # manual | voice | ocr | notification
+    source: TransactionSource = TransactionSource.manual # manual | voice | ocr | notification
+
+    
 
 # --- Budgets ---
 
@@ -205,7 +217,7 @@ class TransactionResponse(BaseModel):
     category_id: str
     merchant_raw: Optional[str]
     description: Optional[str]
-    source: str
+    source: TransactionSource 
 
 
 class TransactionUpdate(BaseModel):
@@ -303,7 +315,7 @@ class GoalAllocationCreate(BaseModel):
 
 class GoalOptimizationPlan(BaseModel):
     plan_id: str
-    feasibility_score: float   # 0–1
+    feasibility_score: float  # 0–100
     time_to_goal_months: int
     allocations: list[dict]
     tradeoffs: list[str]
@@ -317,3 +329,4 @@ class GoalResponse(BaseModel):
     current_amount: float
     target_date: date
     status: str
+

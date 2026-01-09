@@ -17,19 +17,19 @@ import logging
 
 from app.services.ai_guardrails import require_confirmation, AIAction, AIActionType
 from app.services.chat_memory import embed_chat_message
-from app.services.websocket_manager import manager
 from app.services.ai.budget_action import detect_budget_action
 from app.services.ai_confirmation_service import (
     create_pending_action,
     pop_pending_action,
 )
-from app.services.ai_action_router import AIActionRouter
+from app.services.action_executor import ActionExecutor
 from app.services.conflict_detector import (
     detect_budget_goal_conflicts,
     validate_budget_creation,
     validate_goal_allocation,
 )
 from app.services.ai_audit_logger import log_ai_action
+
 
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
 logger = logging.getLogger(__name__)
@@ -194,8 +194,8 @@ class ChatService:
                 )
 
             # Execute action via router
-            router = AIActionRouter(self.db)
-            result = await router.execute(user_id, action)
+            executor = ActionExecutor(self.db)
+            result = await executor.execute(user_id, action)
 
             # Log successful action
             await log_ai_action(
@@ -211,19 +211,8 @@ class ChatService:
                 answer = (
                     f"✅ Budget **{result.name}** created.\n"
                     f"Limit: ₹{result.limit_amount} ({result.period})"
-                )
-                # Broadcast to user
-                await manager.broadcast_to_user(
-                    str(user_id),
-                    {
-                        "type": "budget_created",
-                        "data": {
-                            "id": str(result.id),
-                            "name": result.name,
-                            "limit_amount": float(result.limit_amount),
-                            "period": result.period,
-                        },
-                    },
+
+
                 )
 
             elif action.action == "create_transaction":
@@ -231,45 +220,15 @@ class ChatService:
                     f"✅ Transaction recorded: ₹{result.amount} "
                     f"at {result.merchant_raw or 'Unknown'}"
                 )
-                # Broadcast to user
-                await manager.broadcast_to_user(
-                    str(user_id),
-                    {
-                        "type": "transaction_created",
-                        "data": {
-                            "id": str(result.id),
-                            "amount": float(result.amount),
-                            "merchant": result.merchant_raw,
-                        },
-                    },
-                )
 
             elif action.action == "create_goal":
                 answer = (
                     f"✅ Goal **{result.name}** created.\n"
                     f"Target: ₹{result.target_amount} by {result.target_date}"
                 )
-                await manager.broadcast_to_user(
-                    str(user_id),
-                    {
-                        "type": "goal_created",
-                        "data": {
-                            "id": str(result.id),
-                            "name": result.name,
-                            "target_amount": float(result.target_amount),
-                        },
-                    },
-                )
 
             elif action.action == "allocate_goal":
                 answer = "✅ Goal allocation completed."
-                await manager.broadcast_to_user(
-                    str(user_id),
-                    {
-                        "type": "goal_allocated",
-                        "data": {"goal_id": action.goal_id},
-                    },
-                )
 
             else:
                 answer = f"✅ Action completed: {action.action.replace('_', ' ')}"
@@ -302,14 +261,14 @@ class ChatService:
             if not pending:
                 return ("Nothing to confirm.", session_id or "")
 
-            router = AIActionRouter(self.db)
+            executor = ActionExecutor(self.db)
             try:
                 # Reconstruct action from pending action
                 from app.services.ai.actions import AIBudgetAction
                 action = AIBudgetAction(**pending.payload)
                 action.action = pending.action_type
 
-                result = await router.execute(user_id, action)
+                result = await executor.execute(user_id, action)
                 await log_ai_action(
                     self.db,
                     user_id,

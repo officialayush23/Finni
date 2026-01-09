@@ -1,51 +1,80 @@
 # backend/app/services/budget_actions.py
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.all_models import Budget
-from app.services.conflict_detector import validate_budget_creation, create_conflict_record
-from datetime import date
+from google import genai
+from app.core.config import settings
+from app.services.ai.actions import AIAction
+import json
 import logging
 
 logger = logging.getLogger(__name__)
 
+client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
-async def create_budget_from_ai(
-    db: AsyncSession,
-    user_id,
-    name: str,
-    limit_amount: float,
-    period: str,
-):
-    """
-    Create a budget from AI with conflict detection.
-    """
-    # Validate for conflicts
-    is_valid, conflicts = await validate_budget_creation(db, user_id, limit_amount)
-    
-    if not is_valid:
-        # Log conflicts but don't block creation (could be made stricter)
-        for conflict in conflicts:
-            await create_conflict_record(
-                db,
-                user_id,
-                conflict["type"],
-                conflict["details"],
-                month=date.today().replace(day=1),
-            )
-        logger.warning(
-            f"Budget creation for user {user_id} has conflicts: {conflicts}"
+SYSTEM_PROMPT = """
+You are an AI financial intent detector.
+
+Your job:
+- Detect if the user wants to CREATE or UPDATE something
+- Output ONLY valid JSON
+- NEVER explain anything
+- If no action is detected, return action = "none"
+
+Supported actions:
+- create_budget
+- create_transaction
+- create_goal
+- allocate_goal
+- none
+
+Rules:
+- Use numbers, not words (₹5000 → 5000)
+- Confidence between 0 and 1
+- Do NOT hallucinate IDs
+"""
+
+async def detect_budget_action(
+    message: str,
+    recent_transactions: str,
+) -> AIAction:
+    prompt = f"""
+{SYSTEM_PROMPT}
+
+Recent transactions:
+{recent_transactions}
+
+User message:
+"{message}"
+
+Return JSON in this exact format:
+{{
+  "action": "...",
+  "confidence": 0.0,
+  "name": null,
+  "limit_amount": null,
+  "period": null,
+  "amount": null,
+  "merchant_raw": null,
+  "target_amount": null,
+  "target_date": null,
+  "allocation_percentage": null
+}}
+"""
+
+    try:
+        response = await client.aio.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
         )
 
-    budget = Budget(
-        user_id=user_id,
-        name=name,
-        limit_amount=limit_amount,
-        period=period,
-        alert_threshold=80,
-        metadata_={},
-    )
+        text = response.text.strip()
 
-    db.add(budget)
-    await db.commit()
-    await db.refresh(budget)
+        # Gemini sometimes wraps JSON in ``` – strip safely
+        if text.startswith("```"):
+            text = text.strip("`").split("\n", 1)[-1]
 
-    return budget
+        data = json.loads(text)
+
+        return AIAction(**data)
+
+    except Exception as e:
+        logger.warning(f"[AI_ACTION_DETECTOR_FAILED] {e}")
+        return AIAction(action="none", confidence=0.0)

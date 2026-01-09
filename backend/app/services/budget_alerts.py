@@ -1,6 +1,6 @@
 # app/services/budget_alerts.py
 
-from app.services.websocket_manager import manager
+from app.services.realtime import emit_budget_alert
 
 async def send_budget_alert(
     user_id,
@@ -9,15 +9,12 @@ async def send_budget_alert(
     limit,
     percentage,
 ):
-    await manager.broadcast_to_user(
-        str(user_id),
+    await emit_budget_alert(
+        user_id,
         {
-            "type": "budget_alert",
-            "data": {
-                "category": category_name,
-                "spent": spent,
-                "limit": limit,
-                "percentage": round(percentage, 2),
-            },
+            "category": category_name,
+            "spent": spent,
+            "limit": limit,
+            "percentage": round(percentage, 2),
         },
     )
