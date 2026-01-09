@@ -47,7 +47,6 @@ async def list_budgets(
 
     return out
 
-
 @router.post("/", response_model=BudgetResponse)
 async def create_budget(
     payload: BudgetCreate,
@@ -55,46 +54,18 @@ async def create_budget(
     auth: AuthUser = Depends(get_current_user),
 ):
     try:
-        # Validate for conflicts
-        is_valid, conflicts = await validate_budget_creation(
-            db, auth.user_id, payload.limit_amount
-        )
-        
-        if not is_valid:
-            # Log conflicts
-            for conflict in conflicts:
-                await create_conflict_record(
-                    db,
-                    auth.user_id,
-                    conflict["type"],
-                    conflict["details"],
-                    month=date.today().replace(day=1),
-                )
-            # Return conflict error (could be made non-blocking)
-            conflict_messages = [c.get("message", "") for c in conflicts]
-            api_error(
-                "BUDGET_CONFLICT",
-                f"Budget creation conflicts detected: {'; '.join(conflict_messages)}",
-                status=409,  # Conflict
-                details={"conflicts": conflicts},
-            )
-
-        budget = Budget(
+        budget = await create_budget_from_ai(
+            db=db,
             user_id=auth.user_id,
             name=payload.name,
             limit_amount=payload.limit_amount,
             period=payload.period,
-            alert_threshold=payload.alert_threshold,
-            metadata_={
+            metadata={
                 "included_category_ids": payload.included_category_ids or [],
                 "excluded_category_ids": payload.excluded_category_ids or [],
                 "excluded_merchants": payload.excluded_merchants or [],
             },
         )
-
-        db.add(budget)
-        await db.commit()
-        await db.refresh(budget)
 
         return BudgetResponse(
             id=str(budget.id),
@@ -102,16 +73,14 @@ async def create_budget(
             limit_amount=budget.limit_amount,
             period=budget.period,
             alert_threshold=budget.alert_threshold,
-            is_active=True,
+            is_active=budget.is_active,
             spent=0,
             remaining=budget.limit_amount,
             percentage_used=0,
         )
-    except Exception as e:
-        if isinstance(e, HTTPException):
-            raise
-        api_error("BUDGET_CREATE_FAILED", str(e), status=500)
 
+    except Exception as e:
+        api_error("BUDGET_CREATE_FAILED", str(e), status=400)
 
 @router.patch("/{budget_id}")
 async def update_budget(

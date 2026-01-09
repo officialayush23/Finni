@@ -17,11 +17,19 @@ async def chat_with_advisor(
 ):
     service = ChatService(db)
 
-    response, session_id = await service.process_message(
+    result, session_id = await service.process_message(
         user_id=auth.user_id,
         message=req.message,
         session_id=req.session_id,
-       
     )
 
-    return ChatResponse(message=response, session_id=session_id)
+    # result can be str OR dict
+    if isinstance(result, dict):
+        return ChatResponse(
+            message=result["message"],
+            session_id=session_id,
+            action=result.get("action"),
+            data=result.get("data"),
+        )
+
+    return ChatResponse(message=result, session_id=session_id)

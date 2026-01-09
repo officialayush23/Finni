@@ -21,7 +21,7 @@ class BudgetMetadata(BaseModel):
 class InvestmentRead(BaseModel):
     id: str
     asset_type: str
-    identifier: str
+    identifier: Optional[str] = None
     name: str
     current_value: Optional[float]
     expected_return_pct: Optional[float]
@@ -143,7 +143,7 @@ class InvestmentUpdate(BaseModel):
 class InvestmentResponse(BaseModel):
     id: str
     asset_type: str
-    identifier: str
+    identifier: Optional[str] = None
     name: Optional[str]
     quantity: float
     avg_buy_price: float

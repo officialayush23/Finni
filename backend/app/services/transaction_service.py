@@ -5,6 +5,7 @@ from sqlalchemy import select
 from datetime import datetime
 from uuid import UUID
 import logging
+from app.services.transaction_ingestion import resolve_merchant_and_category
 
 from app.models.all_models import Transaction, Budget, TxnSourceEnum
 from app.services.budget_engine import calculate_budget_spent
@@ -30,24 +31,39 @@ async def create_transaction(
     """
     SINGLE source of truth for transactions.
     """
+
+    merchant_id = None
+    resolved_category_id = category_id
+
+    if merchant_raw:
+        merchant, cat_id = await resolve_merchant_and_category(
+            db,
+            user_id=user_id,
+            merchant_raw=merchant_raw,
+        )
+        merchant_id = merchant.id
+        if not resolved_category_id:
+            resolved_category_id = cat_id
     txn = Transaction(
         user_id=user_id,
         amount=amount,
         occurred_at=occurred_at,
+        merchant_id=merchant_id,
         merchant_raw=merchant_raw,
-        description=description,
-        category_id=category_id,
+        category_id=resolved_category_id,
         source=source,
     )
+
     if amount <= 0:
         raise ValueError("Transaction amount must be positive")
     db.add(txn)
 
-    # Budget checks BEFORE commit
-    await handle_budget_checks(db, txn)
+   
 
     await db.commit()
     await db.refresh(txn)
+     # Budget checks BEFORE commit
+    await handle_budget_checks(db, txn)
 
     return txn
 

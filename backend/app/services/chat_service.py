@@ -42,6 +42,7 @@ class ChatService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+   
 
 
     async def _get_or_create_session(
@@ -157,6 +158,22 @@ class ChatService:
                 confidence=action.confidence,
                 payload=action.model_dump(exclude_none=True),
             )
+            REQUIRED_FIELDS = {
+            "create_budget": ["name", "limit_amount"],
+            "create_goal": ["name", "target_amount", "target_date"],
+            "create_transaction": ["amount"],
+        }
+            missing = [
+                f for f in REQUIRED_FIELDS.get(action.action, [])
+                if getattr(action, f, None) is None
+            ]
+
+            if missing:
+                return {
+                    "message": f"❓ I need {', '.join(missing)} to {action.action.replace('_',' ')}.",
+                    "action": action.action,
+                    "data": None,
+                }, False
 
             # Check guardrails
             if require_confirmation(ai_action):
@@ -236,7 +253,15 @@ class ChatService:
             else:
                 answer = f"✅ Action completed: {action.action.replace('_', ' ')}"
 
-            return answer, True
+            return {
+                    "message": answer,
+                    "action": action.action,
+                    "data": {
+                        "id": str(getattr(result, "id", None)),
+                        "type": action.action,
+                    },
+                }, True
+
 
         except Exception as e:
             logger.error(f"Error executing action {action.action}: {e}", exc_info=True)
@@ -247,7 +272,12 @@ class ChatService:
                 "failed",
                 {"error": str(e)},
             )
-            return f"❌ Error: {str(e)}", False
+            return {
+                        "message": f"❌ Error: {str(e)}",
+                        "action": action.action,
+                        "data": None,
+                    }, False
+
 
     async def process_message(
         self,
@@ -357,19 +387,27 @@ class ChatService:
 
         # If action detected, execute it
         if action.action != "none":
-            answer, success = await self._execute_action(user_id, action, session_uuid)
+            original_message = message
+            result, success = await self._execute_action(
+                                                            user_id, action, session_uuid
+                                                        )
+            message = result["message"]
+
+            ai_msg = ChatMessage(
+                session_id=session_uuid,
+                sender="ai",
+                content=message,
+            )
+
+            
 
             # Persist chat messages
             user_msg = ChatMessage(
                 session_id=session_uuid,
                 sender="user",
-                content=message,
+                content=original_message,
             )
-            ai_msg = ChatMessage(
-                session_id=session_uuid,
-                sender="ai",
-                content=answer,
-            )
+           
 
             self.db.add_all([user_msg, ai_msg])
             await self.db.commit()
@@ -377,7 +415,7 @@ class ChatService:
             await embed_chat_message(self.db, user_msg)
             await embed_chat_message(self.db, ai_msg)
 
-            return answer, str(session_uuid)
+            return result, str(session_uuid)
 
         # No action detected - normal chat response
         context = await self.get_financial_context(user_id)

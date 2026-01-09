@@ -16,6 +16,7 @@ class AIActionType(str, Enum):
 
 
 
+
 @dataclass
 class AIAction:
     action: AIActionType

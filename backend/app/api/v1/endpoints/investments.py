@@ -7,6 +7,7 @@ from app.api.deps.auth import get_current_user, AuthUser
 from app.models.all_models import PortfolioHolding
 from app.schemas.schemas import InvestmentCreate, InvestmentResponse, InvestmentUpdate
 from app.services.price_engine import fetch_stock_price
+from app.services.investment_projection import project_monthly_return
 from datetime import datetime
 from sqlalchemy import select
 router = APIRouter()
@@ -37,8 +38,9 @@ async def create_investment(
 
     return InvestmentResponse(
         id=str(holding.id),
-        asset_type=holding.asset_type,
-        identifier=holding.identifier,
+        asset_type=holding.asset_type.value if hasattr(holding.asset_type, "value") else holding.asset_type,
+
+        identifier=holding.identifier or None,
         name=holding.name,
         quantity=holding.quantity,
         avg_buy_price=holding.avg_buy_price,
@@ -68,23 +70,25 @@ async def list_investments(
 
     for h in holdings:
         meta = h.metadata_ or {}
+
         response.append(
             InvestmentResponse(
                 id=str(h.id),
-                asset_type=h.asset_type,
-                identifier=h.identifier,
+                asset_type=h.asset_type.value if hasattr(h.asset_type, "value") else h.asset_type,
+                identifier=h.identifier or None,
                 name=h.name,
-                quantity=h.quantity,
+                quantity=float(h.quantity),
                 avg_buy_price=h.avg_buy_price,
                 current_value=h.current_value,
                 last_api_fetch=h.last_api_fetch,
                 expected_annual_return=meta.get("expected_annual_return"),
                 risk_level=meta.get("risk_level"),
-                is_pinned=meta.get("is_pinned", False),
+                is_pinned=bool(meta.get("is_pinned", False)),
             )
         )
 
     return response
+
 
 
 @router.patch("/{investment_id}")
@@ -152,7 +156,8 @@ async def investment_overview(
         response.append({
             "id": str(h.id),
             "name": h.name,
-            "asset_type": h.asset_type.value,
+            "asset_type": h.asset_type.value if hasattr(h.asset_type, "value") else h.asset_type,
+
             "current_value": float(h.current_value or 0),
             "expected_monthly_return": monthly,
             "last_api_fetch": h.last_api_fetch,
