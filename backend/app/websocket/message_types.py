@@ -40,6 +40,13 @@ class MessageType(str, Enum):
     
     # Portfolio
     PORTFOLIO_UPDATE = "portfolio_update"
+    # Goals
+    GOAL_CREATED = "goal_created"
+    GOAL_ALLOCATED = "goal_allocated"
+
+    # Investments
+    INVESTMENT_CREATED = "investment_created"
+    INVESTMENT_UPDATED = "investment_updated"
 
 
 class WebSocketMessage(BaseModel):
@@ -195,4 +202,23 @@ def msg_error(error_message: str, code: Optional[str] = None) -> dict:
     return WebSocketMessage(
         type=MessageType.ERROR,
         data={"error": error_message, "code": code}
+    ).model_dump()
+def msg_goal_created(goal: dict) -> dict:
+    return WebSocketMessage(
+        type=MessageType.GOAL_CREATED,
+        data=goal,
+    ).model_dump()
+
+
+def msg_goal_allocated(goal_id: str) -> dict:
+    return WebSocketMessage(
+        type=MessageType.GOAL_ALLOCATED,
+        data={"goal_id": goal_id},
+    ).model_dump()
+
+
+def msg_investment_created(investment: dict) -> dict:
+    return WebSocketMessage(
+        type=MessageType.INVESTMENT_CREATED,
+        data=investment,
     ).model_dump()

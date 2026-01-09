@@ -19,7 +19,7 @@ async def categorize_transaction(text: str) -> dict:
     """
 
     resp = await client.aio.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash",
         contents=prompt,
     )
 

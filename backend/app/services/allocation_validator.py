@@ -3,6 +3,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.all_models import GoalAllocation, PortfolioHolding
 
+from decimal import Decimal
 async def validate_portfolio_allocation(
     db: AsyncSession,
     holding_id,
@@ -26,12 +27,18 @@ async def validate_portfolio_allocation(
 
     used_pct, used_amt = result.one()
 
+    # 🔑 NORMALIZE
+    used_pct = float(used_pct or 0)
+    used_amt = float(used_amt or 0)
+
     holding = await db.get(PortfolioHolding, holding_id)
     if not holding:
         raise ValueError("Portfolio holding not found")
 
-    if new_pct and used_pct + new_pct > 100:
+    holding_value = float(holding.current_value or 0)
+
+    if new_pct is not None and used_pct + float(new_pct) > 100:
         raise ValueError("Investment allocation exceeds 100%")
 
-    if new_amount and used_amt + new_amount > float(holding.current_value or 0):
+    if new_amount is not None and used_amt + float(new_amount) > holding_value:
         raise ValueError("Investment allocation exceeds holding value")

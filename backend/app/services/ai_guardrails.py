@@ -6,11 +6,14 @@ from typing import Optional
 
 
 class AIActionType(str, Enum):
+    create_transaction = "create_transaction"
+    create_budget = "create_budget"
+    create_goal = "create_goal"
+    allocate_goal = "allocate_goal"
+    add_income = "add_income"
+    add_investment = "add_investment"
     NONE = "none"
-    CREATE_BUDGET = "create_budget"
-    CREATE_TRANSACTION = "create_transaction"
-    ALLOCATE_GOAL = "allocate_goal"
-    UPDATE_GOAL = "update_goal"
+
 
 
 @dataclass
@@ -21,4 +24,8 @@ class AIAction:
 
 
 def require_confirmation(action: AIAction) -> bool:
-    return action.action != AIActionType.NONE and action.confidence < 0.75
+    return (
+        action.action != AIActionType.NONE
+        and action.confidence < 0.75
+    )
+

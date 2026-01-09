@@ -67,8 +67,11 @@ class ChatRequest(BaseModel):
 
 
 class ChatResponse(BaseModel):
-    response: str
+    message: str | dict
     session_id: str
+    action: Optional[str] = None
+    data: Optional[dict] = None
+
 
 # --- User Profile ---
 

@@ -12,6 +12,8 @@ import uuid
 
 MONTHLY_ROI_FALLBACK = 0.01  # conservative
 
+
+
 async def optimize_goal(
     db: AsyncSession,
     goal: FinancialGoal,
@@ -75,8 +77,8 @@ async def optimize_goal(
 
         if contribution <= 0:
             continue
-
-        months = int(goal.target_amount / contribution)
+        target_amount = float(goal.target_amount or 0)
+        months = int(target_amount / contribution)
 
         plans.append({
             "source": "income",
@@ -100,7 +102,7 @@ async def optimize_goal(
         if monthly_return <= 0:
             continue
 
-        months = int(goal.target_amount / monthly_return)
+        months = int(target_amount / monthly_return)
 
         plans.append({
             "source": "investment_return",

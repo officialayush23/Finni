@@ -24,4 +24,4 @@ async def chat_with_advisor(
        
     )
 
-    return ChatResponse(response=response, session_id=session_id)
+    return ChatResponse(message=response, session_id=session_id)

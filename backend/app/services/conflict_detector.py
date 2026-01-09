@@ -158,9 +158,10 @@ async def detect_capital_overallocation(
             query = query.where(GoalAllocation.goal_id != exclude_goal_id)
 
         result = await db.execute(query)
-        existing_allocated = float(result.scalar())
-
+        existing_allocated = float(result.scalar() or 0)
         available_capital = float(holding.current_value or 0) - existing_allocated
+
+
 
         if new_allocation_amount > available_capital:
             conflicts.append({

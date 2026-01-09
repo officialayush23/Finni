@@ -14,10 +14,13 @@ import uuid
 from typing import Optional
 from datetime import datetime
 import logging
+from app.services.ai.planning_engine import generate_plan
+from app.services.plan_executer import apply_plan
 
 from app.services.ai_guardrails import require_confirmation, AIAction, AIActionType
 from app.services.chat_memory import embed_chat_message
-from app.services.ai.budget_action import detect_budget_action
+from app.services.ai.action_detector import detect_action
+
 from app.services.ai_confirmation_service import (
     create_pending_action,
     pop_pending_action,
@@ -261,25 +264,43 @@ class ChatService:
             if not pending:
                 return ("Nothing to confirm.", session_id or "")
 
-            executor = ActionExecutor(self.db)
-            try:
-                # Reconstruct action from pending action
-                from app.services.ai.actions import AIBudgetAction
-                action = AIBudgetAction(**pending.payload)
-                action.action = pending.action_type
+            # 🧠 PLAN CONFIRMATION
+            if pending.action_type == "apply_plan":
+                await apply_plan(
+                    db=self.db,
+                    user_id=user_id,
+                    plan=pending.payload,
+                )
 
-                result = await executor.execute(user_id, action)
                 await log_ai_action(
                     self.db,
                     user_id,
-                    pending.action_type,
-                    "confirmed_completed",
-                    {"result_id": str(getattr(result, "id", None))},
+                    "apply_plan",
+                    "completed",
+                    pending.payload,
                 )
-                return (f"✅ Action completed: {pending.action_type}", session_id or "")
-            except Exception as e:
-                logger.error(f"Error confirming action: {e}", exc_info=True)
-                return (f"❌ Error: {str(e)}", session_id or "")
+
+                return ("✅ Financial plan applied successfully.", session_id or "")
+
+            # ⚙️ ACTION CONFIRMATION
+            executor = ActionExecutor(self.db)
+            from app.services.ai.actions import AIAction
+
+            action = AIAction(**pending.payload)
+            action.action = pending.action_type
+
+            result = await executor.execute(user_id, action)
+
+            await log_ai_action(
+                self.db,
+                user_id,
+                pending.action_type,
+                "confirmed_completed",
+                {"result_id": str(getattr(result, "id", None))},
+            )
+
+            return (f"✅ Action completed: {pending.action_type}", session_id or "")
+
 
         session_uuid = await self._get_or_create_session(
             user_id=user_id,
@@ -292,9 +313,47 @@ class ChatService:
         txn_context = "\n".join(
             f"₹{t.amount} at {t.merchant_raw}" for t in txns
         ) or "No recent transactions"
+        PLANNING_KEYWORDS = {
+            "start planning",
+            "get advice",
+            "help me plan",
+            "what should i do",
+            "suggest a plan",
+            "financial plan",
+            "make a plan",
+        }
 
+        def is_planning_mode(message: str) -> bool:
+            text = message.lower()
+            return any(k in text for k in PLANNING_KEYWORDS)
         # Detect action
-        action = await detect_budget_action(message, txn_context)
+        financial_context = await self.get_financial_context(user_id)
+
+# 1️⃣ Planning / advice mode
+     
+        if is_planning_mode(message):
+            plan = await generate_plan(
+                message=message,
+                financial_context=financial_context,
+            )
+
+            await create_pending_action(
+                db=self.db,
+                user_id=user_id,
+                action_type="apply_plan",
+                payload=plan,
+            )
+
+            return plan, str(session_uuid)
+
+
+        # 2️⃣ Execution mode
+        action = await detect_action(
+            message=message,
+            txn_context=txn_context,
+            financial_context=financial_context,
+        )
+
 
         # If action detected, execute it
         if action.action != "none":
@@ -336,7 +395,7 @@ Give clear, actionable advice.
 """
 
         response = await client.aio.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             contents=prompt,
         )
 
