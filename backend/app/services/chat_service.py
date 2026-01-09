@@ -1,3 +1,4 @@
+# app/services/chat_service.py
 from google import genai
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -376,7 +377,7 @@ Give clear, actionable advice.
 """
 
         response = await client.aio.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-2.0-flash",
             contents=prompt,
         )
 
