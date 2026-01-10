@@ -63,7 +63,9 @@ async def list_transactions(
         stmt = stmt.where(Transaction.occurred_at <= end_date)
 
     result = await db.execute(stmt.order_by(Transaction.occurred_at.desc()))
-    return result.scalars().all()
+    txns = result.scalars().all()
+    return [TransactionResponse.from_orm(txn) for txn in txns]
+
 
 
 @router.patch("/{txn_id}", response_model=TransactionResponse)

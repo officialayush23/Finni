@@ -213,14 +213,18 @@ class BudgetUpdate(BaseModel):
 
 
 class TransactionResponse(BaseModel):
-    id: str
+    id: UUID
     amount: float
     currency: str
     occurred_at: datetime
-    category_id: str
+    category_id: UUID | None
     merchant_raw: Optional[str]
     description: Optional[str]
-    source: TransactionSource 
+    source: TransactionSource
+
+    class Config:
+        from_attributes = True
+
 
 
 class TransactionUpdate(BaseModel):
