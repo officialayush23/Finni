@@ -36,7 +36,11 @@ api_router.include_router(
 )
 api_router.include_router(dashboard.router)
 api_router.include_router(dev_auth.router)
-api_router.include_router(category.router, prefix="/category", tags=["AI Categorization"])
+api_router.include_router(
+    category.router,
+    prefix="/categories"
+)
+
 
 
 # websocket has no prefix

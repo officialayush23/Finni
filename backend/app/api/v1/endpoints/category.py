@@ -95,23 +95,25 @@ async def category_trends(
     db: AsyncSession = Depends(get_db),
     auth: AuthUser = Depends(get_current_user),
 ):
+    month_expr = func.date_trunc("month", Transaction.occurred_at)
+
     result = await db.execute(
         select(
             Category.name,
-            func.date_trunc("month", Transaction.occurred_at).label("month"),
+            month_expr.label("month"),
             func.sum(Transaction.amount).label("spent"),
         )
         .join(Transaction, Transaction.category_id == Category.id)
         .where(Transaction.user_id == auth.user_id)
-        .group_by(Category.name, func.date_trunc("month", Transaction.occurred_at))
-        .order_by("month")
+        .group_by(Category.name, month_expr)
+        .order_by(month_expr)
     )
 
     data = {}
     for name, month, spent in result:
         data.setdefault(name, []).append({
             "month": month.date().isoformat(),
-            "spent": float(spent),
+            "spent": float(spent or 0),
         })
 
     return data
