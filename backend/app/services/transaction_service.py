@@ -1,22 +1,20 @@
 # app/services/transaction_service.py
-
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 from uuid import UUID
 import logging
-from app.services.transaction_ingestion import resolve_merchant_and_category
 
+from app.services.transaction_ingestion import resolve_merchant_and_category
 from app.models.all_models import Transaction, Budget, TxnSourceEnum
 from app.services.budget_engine import calculate_budget_spent
 from app.services.budget_alerts import send_budget_alert
-
+from app.services.category_suggestor import suggest_categories
 logger = logging.getLogger(__name__)
 
+LOW_CONFIDENCE_THRESHOLD = 0.6
 
-# -----------------------------
-# MAIN ENTRY POINT (AI / VOICE / CHAT)
-# -----------------------------
+
 async def create_transaction(
     db: AsyncSession,
     *,
@@ -28,22 +26,35 @@ async def create_transaction(
     description: str | None = None,
     category_id: UUID | None = None,
 ):
-    """
-    SINGLE source of truth for transactions.
-    """
+    if amount <= 0:
+        raise ValueError("Transaction amount must be positive")
 
     merchant_id = None
     resolved_category_id = category_id
+    confidence = 1.0
 
     if merchant_raw:
-        merchant, cat_id = await resolve_merchant_and_category(
+        merchant, cat_id, ai_conf = await resolve_merchant_and_category(
             db,
             user_id=user_id,
             merchant_raw=merchant_raw,
         )
         merchant_id = merchant.id
+        confidence = ai_conf
+
         if not resolved_category_id:
             resolved_category_id = cat_id
+
+    needs_review = confidence < LOW_CONFIDENCE_THRESHOLD
+
+    suggestions = None
+    if needs_review:
+        suggestions = await suggest_categories(
+            db,
+            user_id=user_id,
+            merchant_id=merchant_id,
+        )
+
     txn = Transaction(
         user_id=user_id,
         amount=amount,
@@ -51,18 +62,17 @@ async def create_transaction(
         merchant_id=merchant_id,
         merchant_raw=merchant_raw,
         category_id=resolved_category_id,
+        category_confidence=confidence,
+        needs_category_review=needs_review,
+        category_suggestions=suggestions,
+        description=description,
         source=source,
     )
 
-    if amount <= 0:
-        raise ValueError("Transaction amount must be positive")
     db.add(txn)
-
-   
-
     await db.commit()
     await db.refresh(txn)
-     # Budget checks BEFORE commit
+
     await handle_budget_checks(db, txn)
 
     return txn

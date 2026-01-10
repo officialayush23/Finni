@@ -1,4 +1,5 @@
-# app/services/ai/categorizer.pyfrom app.services.ai.schemas import AICategorizationResult
+# app/services/ai/categorizer.py
+from app.services.ai.schemas import AICategorizationResult
 from app.services.ai.prompts import CATEGORIZATION_PROMPT
 from app.core.config import settings
 from app.services.ai.schemas import AICategorizationResult

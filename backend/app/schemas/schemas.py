@@ -193,6 +193,7 @@ class TransactionCreate(BaseModel):
     merchant_raw: Optional[str] = None
     description: Optional[str] = None
     source: TransactionSource = TransactionSource.manual # manual | voice | ocr | notification
+ 
 
     
 
@@ -221,6 +222,9 @@ class TransactionResponse(BaseModel):
     merchant_raw: Optional[str]
     description: Optional[str]
     source: TransactionSource
+    category_confidence: Optional[float]
+    needs_category_review: bool
+    category_suggestions: Optional[list[dict]]
 
     class Config:
         from_attributes = True
@@ -337,3 +341,9 @@ class GoalResponse(BaseModel):
     target_date: date
     status: str
 
+
+class CategoryCreate(BaseModel):
+    name: str
+    parent_id: Optional[UUID] = None
+    icon: Optional[str] = None
+    color: Optional[str] = None

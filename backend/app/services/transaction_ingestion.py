@@ -1,6 +1,7 @@
 # app/services/transaction_ingestion.py
 # app/services/transaction_ingestion.py
 
+# app/services/transaction_ingestion.py
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.all_models import (
@@ -17,10 +18,9 @@ async def resolve_merchant_and_category(
     user_id,
     merchant_raw: str,
 ):
-    # Simple deterministic normalization (DB will normalize further)
     norm = merchant_raw.lower().strip()
 
-    # 1️⃣ Find or create merchant
+    # 1️⃣ Merchant
     result = await db.execute(
         select(MerchantMaster)
         .where(MerchantMaster.canonical_name_norm == norm)
@@ -35,7 +35,7 @@ async def resolve_merchant_and_category(
         db.add(merchant)
         await db.flush()
 
-    # 2️⃣ User override mapping
+    # 2️⃣ User override
     result = await db.execute(
         select(MerchantCategoryMap)
         .where(MerchantCategoryMap.user_id == user_id)
@@ -43,17 +43,19 @@ async def resolve_merchant_and_category(
     )
     mapping = result.scalar_one_or_none()
     if mapping:
-        return merchant, mapping.category_id
+        return merchant, mapping.category_id, float(mapping.confidence)
 
-    # 3️⃣ AI categorization (fallback)
+    # 3️⃣ AI fallback
     ai = await categorize_transaction(merchant_raw)
 
-    cat_result = await db.execute(
+    result = await db.execute(
         select(Category)
         .where(Category.user_id.is_(None))
         .where(Category.name.ilike(ai["category_name"]))
     )
-    category = cat_result.scalar_one_or_none()
+    category = result.scalar_one_or_none()
+
+    confidence = ai["confidence"]
 
     if category:
         db.add(
@@ -61,9 +63,9 @@ async def resolve_merchant_and_category(
                 user_id=user_id,
                 merchant_id=merchant.id,
                 category_id=category.id,
-                confidence=ai["confidence"],
+                confidence=confidence,
                 source="ai",
             )
         )
 
-    return merchant, category.id if category else None
+    return merchant, (category.id if category else None), confidence
