@@ -12,6 +12,7 @@ class PredictionEngine:
             from prophet import Prophet
 
             df = self._fetch_history(symbol, yf, pd)
+
             if df.empty or len(df) < 30:
                 raise ValueError("Not enough data")
 
@@ -21,17 +22,30 @@ class PredictionEngine:
             future = model.make_future_dataframe(periods=30)
             forecast = model.predict(future)
 
-            current_price = df.iloc[-1]["y"]
-            future_price = forecast.iloc[-1]["yhat"]
+            current_price = float(df.iloc[-1]["y"])
+            future_price = float(forecast.iloc[-1]["yhat"])
 
-            points = [
-                PredictionPoint(
-                    date=row["ds"].strftime("%Y-%m-%d"),
-                    price=round(row["yhat"], 2),
-                    type="forecast",
+            points = []
+
+            # history
+            for _, row in df.tail(30).iterrows():
+                points.append(
+                    PredictionPoint(
+                        date=row["ds"].strftime("%Y-%m-%d"),
+                        price=round(float(row["y"]), 2),
+                        type="history",
+                    )
                 )
-                for _, row in forecast.tail(30).iterrows()
-            ]
+
+            # forecast
+            for _, row in forecast.tail(30).iterrows():
+                points.append(
+                    PredictionPoint(
+                        date=row["ds"].strftime("%Y-%m-%d"),
+                        price=round(float(row["yhat"]), 2),
+                        type="forecast",
+                    )
+                )
 
             metrics = MetricCard(
                 current_price=round(current_price, 2),
@@ -51,9 +65,16 @@ class PredictionEngine:
     def _fetch_history(self, symbol, yf, pd):
         ticker = yf.Ticker(symbol)
         hist = ticker.history(period="2y")
+
+        if hist.empty:
+            return pd.DataFrame()
+
         df = hist.reset_index()[["Date", "Close"]]
         df.columns = ["ds", "y"]
-        df["ds"] = pd.to_datetime(df["ds"])
+
+        # 🔥 THIS IS THE FIX
+        df["ds"] = pd.to_datetime(df["ds"]).dt.tz_localize(None)
+
         return df
 
     def _mock_forecast(self):
