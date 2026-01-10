@@ -14,7 +14,7 @@ from app.schemas.schemas import (
 )
 from app.services.transaction_service import handle_budget_checks
 from app.utils.api_errors import api_error
-
+from app.services.transaction_service import create_transaction as create_txn_service
 router = APIRouter()
 
 
@@ -25,22 +25,16 @@ async def create_transaction(
     auth: AuthUser = Depends(get_current_user),
 ):
     try:
-        txn = Transaction(
+        txn = await create_txn_service(
+            db=db,
             user_id=auth.user_id,
             amount=payload.amount,
-            currency=payload.currency,
             occurred_at=payload.occurred_at,
-            category_id=payload.category_id,
+            source=TxnSourceEnum(payload.source),
             merchant_raw=payload.merchant_raw,
             description=payload.description,
-            source=TxnSourceEnum(payload.source),
+            category_id=payload.category_id,  # optional override
         )
-
-        db.add(txn)
-        await db.commit()
-        await db.refresh(txn)
-
-        await handle_budget_checks(db, txn)
 
         return TransactionResponse.from_orm(txn)
 
