@@ -115,3 +115,40 @@ async def category_trends(
         })
 
     return data
+
+@router.get("/tree")
+async def category_tree(
+    db: AsyncSession = Depends(get_db),
+    auth: AuthUser = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Category)
+        .where(
+            (Category.user_id == auth.user_id) |
+            (Category.user_id.is_(None))
+        )
+        .order_by(Category.name)
+    )
+    categories = result.scalars().all()
+
+    nodes = {
+        str(c.id): {
+            "id": str(c.id),
+            "name": c.name,
+            "icon": c.icon,
+            "color": c.color,
+            "parent_id": str(c.parent_id) if c.parent_id else None,
+            "is_system": c.user_id is None,
+            "children": [],
+        }
+        for c in categories
+    }
+
+    roots = []
+    for node in nodes.values():
+        if node["parent_id"] and node["parent_id"] in nodes:
+            nodes[node["parent_id"]]["children"].append(node)
+        else:
+            roots.append(node)
+
+    return roots

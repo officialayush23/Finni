@@ -9,26 +9,33 @@ import json
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
 
-async def categorize_transaction(
-    text: str,
-    categories: list[dict] | None = None,
-) -> AICategorizationResult:
-    """
-    Categorize a merchant/transaction into a system category.
-    """
+async def categorize_transaction(text: str) -> dict:
+    resp = await client.aio.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=f"""
+Return ONLY valid JSON.
+No markdown.
+No explanation.
 
-    categories = categories or []
+{{"category_name": string, "confidence": number}}
 
-    prompt = CATEGORIZATION_PROMPT.format(
-        text=text,
-        categories=categories,
+Text: "{text}"
+"""
     )
 
-    response = await client.aio.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=prompt,
-    )
+    try:
+        raw = resp.text.strip()
+        json_start = raw.find("{")
+        json_end = raw.rfind("}") + 1
+        data = json.loads(raw[json_start:json_end])
+    except Exception:
+        # HARD fallback (never crash ingestion)
+        return {
+            "category_name": "Uncategorized",
+            "confidence": 0.0,
+        }
 
-    data = json.loads(response.text)
-
-    return AICategorizationResult(**data)
+    return {
+        "category_name": data.get("category_name", "Uncategorized"),
+        "confidence": float(data.get("confidence", 0.0)),
+    }

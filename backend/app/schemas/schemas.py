@@ -222,9 +222,9 @@ class TransactionResponse(BaseModel):
     merchant_raw: Optional[str]
     description: Optional[str]
     source: TransactionSource
-    category_confidence: Optional[float]
-    needs_category_review: bool
-    category_suggestions: Optional[list[dict]]
+    category_confidence: Optional[float] = None
+    needs_category_review: bool = False
+    category_suggestions: Optional[list[dict]] = None
 
     class Config:
         from_attributes = True

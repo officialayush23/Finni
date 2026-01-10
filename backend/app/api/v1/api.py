@@ -13,7 +13,7 @@ from app.api.v1.endpoints import (
     transactions,
     goals,
     dashboard,
-    dev_auth
+    dev_auth,category
 
 
 
@@ -36,6 +36,7 @@ api_router.include_router(
 )
 api_router.include_router(dashboard.router)
 api_router.include_router(dev_auth.router)
+api_router.include_router(category.router, prefix="/category", tags=["AI Categorization"])
 
 
 # websocket has no prefix

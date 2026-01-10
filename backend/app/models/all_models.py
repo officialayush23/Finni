@@ -251,6 +251,9 @@ class Transaction(Base):
     merchant_id = Column(UUID(as_uuid=True), ForeignKey("merchant_master.id"))
     merchant_raw = Column(Text)
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"))
+    category_confidence = Column(Numeric(4, 2), default=1.0)
+    needs_category_review = Column(Boolean, default=False)
+    category_suggestions = Column(JSONB, nullable=True)
 
     source = Column(
         SQLEnum(

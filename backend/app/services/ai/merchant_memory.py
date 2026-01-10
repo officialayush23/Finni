@@ -6,11 +6,12 @@ from app.models.all_models import MerchantCategoryMap
 async def get_known_category(
     db: AsyncSession,
     user_id,
-    normalized_merchant: str
+    merchant_id,
 ):
     result = await db.execute(
         select(MerchantCategoryMap)
         .where(MerchantCategoryMap.user_id == user_id)
+        .where(MerchantCategoryMap.merchant_id == merchant_id)
         .where(MerchantCategoryMap.source == "user")
     )
-    return result.scalars().first()
+    return result.scalar_one_or_none()
