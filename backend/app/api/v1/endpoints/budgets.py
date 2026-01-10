@@ -1,5 +1,6 @@
 # app/api/v1/endpoints/budgets.py
 
+from app.services.budget_actions import create_budget_from_ai
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -12,6 +13,7 @@ from app.services.budget_engine import calculate_budget_spent
 from app.services.conflict_detector import validate_budget_creation, create_conflict_record
 from app.utils.api_errors import api_error
 from datetime import date
+from app.services.budget_service import calculate_budget_usage, get_category_tree_ids
 
 router = APIRouter()
 
@@ -60,11 +62,7 @@ async def create_budget(
             name=payload.name,
             limit_amount=payload.limit_amount,
             period=payload.period,
-            metadata={
-                "included_category_ids": payload.included_category_ids or [],
-                "excluded_category_ids": payload.excluded_category_ids or [],
-                "excluded_merchants": payload.excluded_merchants or [],
-            },
+            metadata=payload.metadata.model_dump() if payload.metadata else {},
         )
 
         return BudgetResponse(
@@ -80,7 +78,8 @@ async def create_budget(
         )
 
     except Exception as e:
-        api_error("BUDGET_CREATE_FAILED", str(e), status=400)
+        raise api_error("BUDGET_CREATE_FAILED", str(e), status=400)
+
 
 @router.patch("/{budget_id}")
 async def update_budget(
