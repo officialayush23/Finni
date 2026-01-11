@@ -5487,7 +5487,8 @@ import {
   Bot,
   Bell,
   Send,
-  Scan
+  Scan,
+  source
 } from '@tamagui/lucide-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -5517,24 +5518,25 @@ export default function Ingest() {
   const [recording, setRecording] = useState(null);
   
   // Use YOUR IP address here
-  const [backendUrl, setBackendUrl] = useState('http://10.62.17.195:8000');
+  const [backendUrl, setBackendUrl] = useState('http://10.0.2.2:8000');
   
   // Ingest form state
   const [formData, setFormData] = useState({
     raw_text: '',
-    source: 'chatbot',
+    source: 'manual',
     sender: 'user'
   });
 
   // Source options matching your enum
   const sourceOptions = [
-    { value: 'chatbot', label: 'AI Chat', icon: <Bot size={16} />, color: '#8B5CF6' },
-    { value: 'manual', label: 'Manual', icon: <Type size={16} />, color: '#3B82F6' },
-    { value: 'voice', label: 'Voice', icon: <Mic size={16} />, color: '#10B981' },
-    { value: 'ocr', label: 'OCR/Image', icon: <Camera size={16} />, color: '#F59E0B' },
-    { value: 'notification', label: 'Notification', icon: <Bell size={16} />, color: '#EF4444' },
-    { value: 'csv', label: 'CSV', icon: <FileText size={16} />, color: '#22C55E' }
-  ];
+  { value: 'manual', label: 'Manual', icon: <Type size={16} />, color: '#3B82F6' },
+  { value: 'voice', label: 'Voice', icon: <Mic size={16} />, color: '#10B981' },
+  { value: 'chatbot', label: 'AI Chat', icon: <Bot size={16} />, color: '#8B5CF6' },
+  { value: 'csv', label: 'CSV', icon: <FileText size={16} />, color: '#22C55E' },
+  { value: 'notification', label: 'Notification', icon: <Bell size={16} />, color: '#EF4444' },
+  { value: 'wallet', label: 'Wallet', icon: <Wallet size={16} />, color: '#F59E0B' },
+  { value: 'blockchain', label: 'Blockchain', icon: <Shield size={16} />, color: '#8B5CF6' }
+];
 
   // Check server connection
   const checkServerConnection = useCallback(async () => {
@@ -5551,7 +5553,7 @@ export default function Ingest() {
       
       // Test the connection to ingest endpoint
       try {
-        const response = await fetch(`${backendUrl}/api/v1/ingest/chatbot?raw_text=test`, {
+        const response = await fetch(`${backendUrl}/ingest/chatbot?raw_text=test`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
@@ -5647,70 +5649,266 @@ export default function Ingest() {
   };
 
   // Handle text ingestion
-  const handleTextIngest = async () => {
-    try {
-      if (!formData.raw_text.trim()) {
-        Alert.alert('Error', 'Please enter text to ingest');
-        return;
-      }
+  // const handleTextIngest = async () => {
+  //   try {
+  //     if (!formData.raw_text.trim()) {
+  //       Alert.alert('Error', 'Please enter text to ingest');
+  //       return;
+  //     }
 
-      setLoading(true);
+  //     setLoading(true);
 
-      console.log('Sending text ingest to:', backendUrl);
-      console.log('Data:', {
-        source: formData.source,
-        raw_text: formData.raw_text,
-        sender: formData.sender
-      });
+  //     console.log('Sending text ingest to:', backendUrl);
+  //     console.log('Data:', {
+  //       source: formData.source,
+  //       raw_text: formData.raw_text,
+  //       sender: formData.sender
+  //     });
 
-      // Call ingest API with GET request
-      const response = await ApiService.get(`/api/v1/ingest/${formData.source}`, {
-        params: {
-          raw_text: formData.raw_text,
-          sender: formData.sender
-        }
-      });
+  //     // Call ingest API with GET request
+  //     const response = await ApiService.post(`/ingest/${formData.source}`, {
+  //       params: {
+  //         raw_text: formData.raw_text,
+  //         sender: formData.sender
+  //       }
+  //     });
 
-      console.log('Ingest response:', response.data);
+  //     console.log('Ingest response:', response.data);
 
-      Alert.alert(
-        'Success!',
-        `Text ingested successfully via ${formData.source}.\n\nResponse: ${response.data}`,
-        [
-          { 
-            text: 'View Transactions', 
-            onPress: () => router.push('/transactions')
-          },
-          { 
-            text: 'OK', 
-            style: 'default',
-            onPress: () => {
-              setShowIngestModal(false);
-              resetForm();
-            }
-          }
-        ]
-      );
+  //     Alert.alert(
+  //       'Success!',
+  //       `Text ingested successfully via ${formData.source}.\n\nResponse: ${response.data}`,
+  //       [
+  //         { 
+  //           text: 'View Transactions', 
+  //           onPress: () => router.push('/transactions')
+  //         },
+  //         { 
+  //           text: 'OK', 
+  //           style: 'default',
+  //           onPress: () => {
+  //             setShowIngestModal(false);
+  //             resetForm();
+  //           }
+  //         }
+  //       ]
+  //     );
       
-    } catch (error) {
-      console.error('Text ingest error:', error);
+  //   } catch (error) {
+  //     console.error('Text ingest error:', error);
+  //     let errorMessage = 'Failed to ingest text';
+      
+  //     if (error.response?.data?.detail) {
+  //       errorMessage = error.response.data.detail;
+  //     } else if (error.response?.status === 422) {
+  //       errorMessage = 'Invalid data. Please check the values.';
+  //     } else if (error.message?.includes('Network')) {
+  //       errorMessage = `Cannot connect to server at ${backendUrl}`;
+  //     } else if (error.response?.status === 404) {
+  //       errorMessage = `Ingest endpoint /ingest/${formData.source} not found`;
+  //     }
+      
+  //     Alert.alert('Error', errorMessage);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  // Handle text ingestion
+  // const handleTextIngest = async () => {
+  //   try {
+  //     if (!formData.raw_text.trim()) {
+  //       Alert.alert('Error', 'Please enter text to ingest');
+  //       return;
+  //     }
+
+  //     setLoading(true);
+
+  //     console.log('Sending text ingest to:', backendUrl);
+      
+  //     // ✅ FIX: Change .get to .post
+  //     // Even though we are sending query parameters, the route requires the POST method
+  //     const response = await ApiService.post(`/ingest/${formData.source}`, null, {
+  //       params: {
+  //         raw_text: formData.raw_text,
+  //         sender: formData.sender
+  //       }
+  //     });
+
+  //     console.log('Ingest response:', response.data);
+
+  //     Alert.alert(
+  //       'Success!',
+  //       `Text ingested successfully via ${formData.source}.`,
+  //       [
+  //         { 
+  //           text: 'View Transactions', 
+  //           onPress: () => router.push('/transactions')
+  //         },
+  //         { 
+  //           text: 'OK', 
+  //           style: 'default',
+  //           onPress: () => {
+  //             setShowIngestModal(false);
+  //             resetForm();
+  //           }
+  //         }
+  //       ]
+  //     );
+      
+  //   } catch (error) {
+  //     console.error('Text ingest error:', error);
+  //     let errorMessage = 'Failed to ingest text';
+      
+  //     // Handle the 405 error specifically in UI if it happens again
+  //     if (error.response?.status === 405) {
+  //       errorMessage = "Server error: Method Not Allowed. Backend expects POST but frontend sent GET (or vice versa).";
+  //     } else if (error.response?.data?.detail) {
+  //       errorMessage = typeof error.response.data.detail === 'string' 
+  //         ? error.response.data.detail 
+  //         : JSON.stringify(error.response.data.detail);
+  //     }
+      
+  //     Alert.alert('Ingestion Error', errorMessage);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  // Update the handleTextIngest function:
+
+// Handle text ingestion
+// Update the handleTextIngest function:
+
+// Handle text ingestion
+const handleTextIngest = async () => {
+  try {
+    if (!formData.raw_text.trim()) {
+      Alert.alert('Error', 'Please enter text to ingest');
+      return;
+    }
+
+    setLoading(true);
+
+    console.log('Sending text ingest to:', backendUrl);
+    console.log('Data:', {
+      source: formData.source,
+      raw_text: formData.raw_text,
+      sender: formData.sender
+    });
+
+    // OPTION 1: Try with empty body (as shown in CURL example)
+    const response = await ApiService.post(
+      `/ingest/${formData.source}?raw_text=${encodeURIComponent(formData.raw_text)}${formData.sender ? `&sender=${encodeURIComponent(formData.sender)}` : ''}`,
+      {}  // Empty object as body
+    );
+
+    console.log('Ingest response:', response.data);
+
+    Alert.alert(
+      'Success!',
+      `Text ingested successfully!\n\nStatus: ${response.data.status}\nEvent ID: ${response.data.raw_event_id}`,
+      [
+        { 
+          text: 'View Transactions', 
+          onPress: () => router.push('/transactions')
+        },
+        { 
+          text: 'OK', 
+          style: 'default',
+          onPress: () => {
+            setShowIngestModal(false);
+            resetForm();
+          }
+        }
+      ]
+    );
+    
+  } catch (error) {
+    console.error('Text ingest error:', error);
+    console.error('Error details:', error.response?.data);
+    
+    // If option 1 fails, try option 2: with request body
+    if (error.response?.status === 422) {
+      try {
+        console.log('Trying with request body instead...');
+        
+        // OPTION 2: Try with request body (some APIs expect this)
+        const response2 = await ApiService.post(
+          `/api/v1/ingest/${formData.source}`,
+          {
+            raw_text: formData.raw_text,
+            ...(formData.sender && { sender: formData.sender })
+          }
+        );
+        
+        console.log('Ingest response (body method):', response2.data);
+        
+        Alert.alert(
+          'Success!',
+          `Text ingested successfully!\n\nStatus: ${response2.data.status}\nEvent ID: ${response2.data.raw_event_id}`,
+          [
+            { 
+              text: 'View Transactions', 
+              onPress: () => router.push('/transactions')
+            },
+            { 
+              text: 'OK', 
+              style: 'default',
+              onPress: () => {
+                setShowIngestModal(false);
+                resetForm();
+              }
+            }
+          ]
+        );
+        
+        return; // Success with option 2
+        
+      } catch (error2) {
+        console.error('Second attempt error:', error2);
+        
+        // Show error from second attempt
+        let errorMessage = 'Failed to ingest text';
+        
+        if (error2.response?.status === 422) {
+          const detail = error2.response.data.detail;
+          if (Array.isArray(detail)) {
+            errorMessage = detail.map(err => {
+              const field = err.loc[err.loc.length - 1];
+              return `${field}: ${err.msg}`;
+            }).join('\n');
+          } else if (typeof detail === 'string') {
+            errorMessage = detail;
+          }
+        }
+        
+        Alert.alert('Error', errorMessage);
+      }
+    } else {
+      // Show original error
       let errorMessage = 'Failed to ingest text';
       
       if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
-      } else if (error.response?.status === 422) {
-        errorMessage = 'Invalid data. Please check the values.';
+        const detail = error.response.data.detail;
+        if (Array.isArray(detail)) {
+          errorMessage = detail.map(err => {
+            const field = err.loc[err.loc.length - 1];
+            return `${field}: ${err.msg}`;
+          }).join('\n');
+        } else if (typeof detail === 'string') {
+          errorMessage = detail;
+        }
       } else if (error.message?.includes('Network')) {
         errorMessage = `Cannot connect to server at ${backendUrl}`;
-      } else if (error.response?.status === 404) {
-        errorMessage = `Ingest endpoint /api/v1/ingest/${formData.source} not found`;
       }
       
       Alert.alert('Error', errorMessage);
-    } finally {
-      setLoading(false);
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Handle image/OCR upload
   const handleImageUpload = async () => {
@@ -5782,7 +5980,7 @@ export default function Ingest() {
       }
 
       // Build the full URL
-      const apiUrl = `${backendUrl}/api/v1/ingest/ocr`;
+      const apiUrl = `${backendUrl}/ingest/ocr`;
       console.log('API URL:', apiUrl);
 
       // Create headers
@@ -6062,7 +6260,7 @@ export default function Ingest() {
           
           <YStack flex={1}>
             <H2 color="#EAB308" fontWeight="900" fontSize={28}>
-              Smart Ingest
+              Ingestion
             </H2>
             <Text color="#666666" fontSize={14}>
               Multiple ways to add transactions
@@ -6261,68 +6459,6 @@ export default function Ingest() {
               </Card>
             </TouchableOpacity>
           </YStack>
-
-          {/* INGESTION EXAMPLES */}
-          <Card backgroundColor="#1A1A1A" p={16} borderRadius={12} mb={24}>
-            <YStack space={12}>
-              <XStack ai="center" space={12}>
-                <MessageSquare size={20} color="#F59E0B" />
-                <Text color="white" fontSize={14} fontWeight="700">
-                  Ingestion Examples
-                </Text>
-              </XStack>
-              
-              <Text color="#666666" fontSize={12}>
-                Try these formats:
-              </Text>
-              
-              <View style={{ backgroundColor: '#222222', padding: 12, borderRadius: 8 }}>
-                <Text color="#EAB308" fontSize={11} fontFamily="monospace">
-                  • "Spent ₹500 at Starbucks" (Chat)
-                </Text>
-                <Text color="#666666" fontSize={11} mt={2}>
-                  • "Received ₹75000 salary" (Manual)
-                </Text>
-                <Text color="#666666" fontSize={11} mt={2}>
-                  • SMS: "You spent ₹1200 at BigBasket" (Notification)
-                </Text>
-                <Text color="#666666" fontSize={11} mt={2}>
-                  • Receipt photo (OCR)
-                </Text>
-              </View>
-            </YStack>
-          </Card>
-
-          {/* API INFORMATION */}
-          <Card backgroundColor="#1A1A1A" p={16} borderRadius={12} mb={24}>
-            <YStack space={12}>
-              <XStack ai="center" space={12}>
-                <Shield size={20} color="#8B5CF6" />
-                <Text color="white" fontSize={14} fontWeight="700">
-                  API Endpoints
-                </Text>
-              </XStack>
-              
-              <Text color="#666666" fontSize={12}>
-                Available ingestion endpoints:
-              </Text>
-              
-              <View style={{ backgroundColor: '#222222', padding: 12, borderRadius: 8 }}>
-                <Text color="#EAB308" fontSize={11} fontFamily="monospace">
-                  GET /api/v1/ingest/{source}
-                </Text>
-                <Text color="#666666" fontSize={11} mt={2}>
-                  Parameters: raw_text, sender
-                </Text>
-                <Text color="#666666" fontSize={11} mt={4} fontFamily="monospace">
-                  POST /api/v1/ingest/ocr
-                </Text>
-                <Text color="#666666" fontSize={11} mt={2}>
-                  Multipart form: file (image)
-                </Text>
-              </View>
-            </YStack>
-          </Card>
           
           {/* DEBUG INFO */}
           {__DEV__ && (
